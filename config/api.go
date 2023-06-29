@@ -12,12 +12,12 @@ import (
 )
 
 type ApiConfig struct {
-	Def     string `yaml:"def"`
-	BaseUrl string `yaml:"base_url"`
+	Def     string `goblet:"def"`
+	BaseUrl string `goblet:"base_url"`
 	def     *openapi3.T
 	server  *openapi3.Server
 	//you should keep the security inputs' safety by yourself
-	securityArgs map[string]interface{} `yaml:"security_args"`
+	SecurityArgs map[string]interface{} `goblet:"security_args"`
 }
 
 func (a *ApiConfig) Init() (err error) {
@@ -31,6 +31,7 @@ func (a *ApiConfig) Init() (err error) {
 			}
 		}
 	}
+	logrus.WithField("server", a.server).WithField("base_url", a.BaseUrl).Info("api config loaded")
 	return err
 }
 
@@ -63,17 +64,35 @@ func (a *ApiConfig) GetFunctionByName(pName, mName string) []openai.FunctionDefi
 
 func (a *ApiConfig) Call(id string, f *openai.FunctionCall) (string, string, json.RawMessage, error) {
 	pName, mName := getPathFromFunctionName(f.Name)
+	logrus.WithField("url", a.server.URL).WithField("path", pName).
+		WithField("name", f.Name).WithField("args", f.Arguments).
+		WithField("method", mName).Info("calling back")
 	_, op, err := openapi.GetPathAndMethod(a.def, pName, mName)
 	var callingArg openapi.CallConfig
+	callingArg.ExtraAuthInfos = []*openapi.ParameterValue{
+		{
+			In:    "header",
+			Name:  "X-Request-Id",
+			Value: id,
+		},
+	}
 	if err == nil {
-		err = json.Unmarshal([]byte(f.Arguments), &callingArg.Input)
+		var inputs map[string]interface{}
+		err = json.Unmarshal([]byte(f.Arguments), &inputs)
 		if err == nil {
 			var sess *openapi.CallingSession
+			if body, ok := inputs["body"]; ok {
+				if bodyObj, ok := body.(map[string]interface{}); ok {
+					callingArg.Input = bodyObj
+				}
+			}
+			logrus.
+				WithField("input", callingArg.Input).Info("calling back with input")
 			sess, err = openapi.NewCalling().
 				SetPathAndMethod(pName, mName, op).
 				SetServer(a.server).
-				SetSecurityByDef(a.securityArgs, a.def).
-				Do(&openapi.CallConfig{})
+				SetSecurityByDef(a.SecurityArgs, a.def).
+				Do(&callingArg)
 			if err == nil {
 				return pName, mName, sess.GetResult().Response, nil
 			}
@@ -88,7 +107,7 @@ func getFunctionName(pName, mName string) string {
 }
 
 func getPathFromFunctionName(fName string) (pName, mName string) {
-	spl := strings.Split(fName, "_")
+	spl := strings.SplitN(fName, "_", 2)
 	pName = strings.ReplaceAll(spl[1], "_", "/")
 	mName = spl[0]
 	return

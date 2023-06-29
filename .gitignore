@@ -1,2 +1,4 @@
 Gmakefile
 deploy/
+vendor/
+config/private*

@@ -3,8 +3,8 @@ module github.com/apieat/aigw
 go 1.18
 
 require (
-	gitee.com/bjf-fhe/apinx v0.1.1-0.20230625032427-60ccef7ade2e
-	github.com/extrame/goblet v0.0.0-20230411030120-0f932575eb82
+	gitee.com/bjf-fhe/apinx v0.1.1-0.20230629063734-990d6228d039
+	github.com/extrame/goblet v0.0.0-20230629031753-7e9c253f9810
 	github.com/getkin/kin-openapi v0.118.0
 	github.com/sashabaranov/go-openai v1.12.0
 )
@@ -14,7 +14,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.12.3 // indirect
 	github.com/extrame/go-bower v0.0.0-20150602065443-bcc81c71c9b3 // indirect
 	github.com/extrame/go-random v0.0.0-20160517052123-1d8679eca4e2 // indirect
-	github.com/extrame/unmarshall v0.0.0-20230411030008-5317d6be714c // indirect
+	github.com/extrame/unmarshall v0.0.0-20230629031606-ced0ffa5388c // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.5 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect

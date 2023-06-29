@@ -5,13 +5,14 @@ import (
 )
 
 type OpenAIConfig struct {
-	Token  string `yaml:"token"`
-	client *openai.Client
+	Token     string            `yaml:"token"`
+	Templates map[string]string `yaml:"templates"`
+	client    *openai.Client
 }
 
-func (this *OpenAIConfig) GetClient() *openai.Client {
-	if this.client == nil {
-		this.client = openai.NewClient(this.Token)
+func (o *OpenAIConfig) GetClient() *openai.Client {
+	if o.client == nil {
+		o.client = openai.NewClient(o.Token)
 	}
-	return this.client
+	return o.client
 }
