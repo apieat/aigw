@@ -11,6 +11,7 @@ type CompletionRequest struct {
 	Id        string            `json:"id"`
 	Type      string            `json:"type"`
 	Functions []AllowedFunction `json:"functions"`
+	Debug     bool              `json:"debug"`
 }
 
 type AllowedFunction struct {

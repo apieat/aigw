@@ -7,6 +7,7 @@ require (
 	github.com/extrame/goblet v0.0.0-20230629031753-7e9c253f9810
 	github.com/getkin/kin-openapi v0.118.0
 	github.com/sashabaranov/go-openai v1.12.0
+	github.com/sirupsen/logrus v1.9.0
 )
 
 require (
@@ -33,7 +34,6 @@ require (
 	github.com/mvader/useragent v0.4.2-0.20160524083018-8a6137f931b1 // indirect
 	github.com/perimeterx/marshmallow v1.1.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
 	golang.org/x/crypto v0.8.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect

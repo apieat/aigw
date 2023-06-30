@@ -21,31 +21,41 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 	if arg.Prompt == "" {
 		return errors.New("prompt is empty")
 	}
-	logrus.WithField("prompt", arg.ToPrompt(openaiCfg.Templates)).WithField("functions", apiCfg.GetFunctions(arg.Functions)).Debug("get completion request")
+	logrus.WithField("prompt", arg.ToPrompt(openaiCfg.Templates)).
+		WithField("functions_filter", arg.Functions).
+		WithField("functions", apiCfg.GetFunctions(arg.Functions)).
+		Debug("get completion request")
 
-	resp, err := client.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model:     openai.GPT3Dot5Turbo0613,
-			Functions: apiCfg.GetFunctions(arg.Functions),
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: arg.ToPrompt(openaiCfg.Templates),
+	if !arg.Debug {
+
+		resp, err := client.CreateChatCompletion(
+			context.Background(),
+			openai.ChatCompletionRequest{
+				Model:     openai.GPT3Dot5Turbo0613,
+				Functions: apiCfg.GetFunctions(arg.Functions),
+				Messages: []openai.ChatCompletionMessage{
+					{
+						Role:    openai.ChatMessageRoleUser,
+						Content: arg.ToPrompt(openaiCfg.Templates),
+					},
 				},
+				Temperature: 0.9,
 			},
-			Temperature: 0.9,
-		},
-	)
-	if err == nil {
-		if openaiCfg.Sync {
-			return handleCallback(&resp, arg.Id, client, ctx)
-		} else {
-			go handleCallback(&resp, arg.Id, client, nil)
+		)
+		if err == nil {
+			if openaiCfg.Sync {
+				return handleCallback(&resp, arg.Id, client, ctx)
+			} else {
+				go handleCallback(&resp, arg.Id, client, nil)
+			}
 		}
+		logrus.Debug("completion finished")
+		return err
+	} else {
+		ctx.AddRespond("functions", apiCfg.GetFunctions(arg.Functions))
+		ctx.AddRespond("prompt", arg.ToPrompt(openaiCfg.Templates))
+		return nil
 	}
-	logrus.Debug("completion finished")
-	return err
 }
 
 func handleCallback(resp *openai.ChatCompletionResponse, id string, client *openai.Client, ctx *goblet.Context) (err error) {
