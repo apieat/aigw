@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"gitee.com/bjf-fhe/apinx/openapi"
+	"github.com/apieat/aigw/model"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
@@ -35,10 +36,23 @@ func (a *ApiConfig) Init() (err error) {
 	return err
 }
 
-func (a *ApiConfig) GetFunctions() []openai.FunctionDefinition {
+func (a *ApiConfig) GetFunctions(allowed []model.AllowedFunction) []openai.FunctionDefinition {
+	var allowdMap map[string]map[string]bool
+	if (len(allowed)) > 0 {
+		allowdMap = make(map[string]map[string]bool)
+		for _, v := range allowed {
+			allowdMap[v.Path] = map[string]bool{v.Method: true}
+		}
+	}
+
 	var ret []openai.FunctionDefinition
 	for pName, v := range a.def.Paths {
 		for mName, v2 := range v.Operations() {
+			if allowdMap != nil {
+				if !allowdMap[pName][mName] {
+					continue
+				}
+			}
 			ret = append(ret, openai.FunctionDefinition{
 				Name:        getFunctionName(pName, mName),
 				Description: v2.Summary + "\n" + v2.Description,

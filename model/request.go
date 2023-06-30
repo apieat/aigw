@@ -1,4 +1,4 @@
-package ctrl
+package model
 
 import (
 	"fmt"
@@ -7,9 +7,15 @@ import (
 )
 
 type CompletionRequest struct {
-	Prompt string `json:"prompt"`
-	Id     string `json:"id"`
-	Type   string `json:"type"`
+	Prompt    string            `json:"prompt"`
+	Id        string            `json:"id"`
+	Type      string            `json:"type"`
+	Functions []AllowedFunction `json:"functions"`
+}
+
+type AllowedFunction struct {
+	Path   string `json:"path"`
+	Method string `json:"method"`
 }
 
 //ToPrompt returns the prompt. If templates are provided, it will use the first template that matches the type to wrap the prompt.
