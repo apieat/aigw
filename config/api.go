@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"gitee.com/bjf-fhe/apinx/openapi"
-	"github.com/apieat/aigw/model"
+	"github.com/apieat/aigw"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
@@ -36,7 +36,7 @@ func (a *ApiConfig) Init() (err error) {
 	return err
 }
 
-func (a *ApiConfig) GetFunctions(allowed []model.AllowedFunction) []openai.FunctionDefinition {
+func (a *ApiConfig) GetFunctions(allowed []aigw.AllowedFunction) []openai.FunctionDefinition {
 	var allowdMap map[string]map[string]bool
 	if (len(allowed)) > 0 {
 		allowdMap = make(map[string]map[string]bool)

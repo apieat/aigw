@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/apieat/aigw/model"
+	"github.com/apieat/aigw"
 	"github.com/extrame/goblet"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
@@ -15,7 +15,7 @@ type Completion struct {
 	goblet.SingleController
 }
 
-func (c *Completion) Post(ctx *goblet.Context, arg model.CompletionRequest) error {
+func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error {
 	client := openaiCfg.GetClient()
 
 	if arg.Prompt == "" {
