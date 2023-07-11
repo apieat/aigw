@@ -9,6 +9,7 @@ type OpenAIConfig struct {
 	Templates map[string]string `yaml:"templates"`
 	client    *openai.Client
 	Sync      bool `yaml:"sync"`
+	MaxTokens int  `yaml:"max_tokens"`
 }
 
 func (o *OpenAIConfig) GetClient() *openai.Client {

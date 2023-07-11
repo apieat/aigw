@@ -16,6 +16,7 @@ type Completion struct {
 }
 
 func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error {
+
 	client := openaiCfg.GetClient()
 
 	if arg.Prompt == "" {
@@ -61,7 +62,7 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 func handleCallback(resp *openai.ChatCompletionResponse, id string, client *openai.Client, ctx *goblet.Context) (err error) {
 	var apiResp json.RawMessage
 	var pName, mName string
-	logrus.WithField("call", resp.Choices[0].Message).Debug("call")
+	logrus.WithField("call", resp.Choices[0].Message).WithField("tokens", resp.Usage).Debug("call")
 	var fc = resp.Choices[0].Message.FunctionCall
 	if fc != nil {
 		pName, mName, apiResp, err = apiCfg.Call(id, resp.Choices[0].Message.FunctionCall)
@@ -72,6 +73,7 @@ func handleCallback(resp *openai.ChatCompletionResponse, id string, client *open
 				openai.ChatCompletionRequest{
 					Model:     openai.GPT3Dot5Turbo0613,
 					Functions: apiCfg.GetFunctionByName(pName, mName),
+					MaxTokens: openaiCfg.MaxTokens,
 					Messages: []openai.ChatCompletionMessage{
 						{
 							Role:    openai.ChatMessageRoleFunction,
@@ -85,7 +87,7 @@ func handleCallback(resp *openai.ChatCompletionResponse, id string, client *open
 				ctx.Respond(analyseResp.Choices[0].Message)
 			}
 		}
-		logrus.WithField("id", id).WithError(err).Errorln("function call error")
+		logrus.WithField("id", id).WithError(err).Errorln("function call finish")
 		return err
 	} else {
 		raw, _ := json.Marshal(resp.Choices[0].Message)
