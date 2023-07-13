@@ -40,14 +40,8 @@ func (c *CompletionRequest) ToPrompt(templates ...map[string]string) string {
 }
 
 //Call calls the completion endpoint
-func (c *CompletionRequest) Call(url string, funcs ...AllowedFunction) error {
+func (c *CompletionRequest) Call(url string) error {
 	var bts bytes.Buffer
-	c.Functions = []AllowedFunction{
-		{
-			Path:   "/api/project/fill",
-			Method: "POST",
-		},
-	}
 	err := json.NewEncoder(&bts).Encode(&c)
 	if err == nil {
 		var req *http.Request
