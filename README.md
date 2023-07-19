@@ -19,10 +19,15 @@ Work as a Microservice, so anyone can deploy it with his site.
 ```
 openai:
   token: your token
+  ask_ai_to_analyse_result: true/false
+  sync: true/false
 api:
   def: ./def.yaml
   base_url: your server's base url
 ```
+
+sync: make calling running in sync mode or not, sync mode will response result of ai
+ask_ai_to_analyse_result: if you want to ask ai to analyse api calling result, set this argument to true, this will only work in sync mode.
 
 Run this micro-service need a openai token and a openapi definition.
 

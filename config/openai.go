@@ -5,11 +5,12 @@ import (
 )
 
 type OpenAIConfig struct {
-	Token     string            `yaml:"token"`
-	Templates map[string]string `yaml:"templates"`
-	client    *openai.Client
-	Sync      bool `yaml:"sync"`
-	MaxTokens int  `yaml:"max_tokens"`
+	Token          string            `yaml:"token"`
+	Templates      map[string]string `yaml:"templates"`
+	client         *openai.Client
+	Sync           bool `yaml:"sync"`
+	MaxTokens      int  `yaml:"max_tokens"`
+	AskAiToAnalyse bool `yaml:"ask_ai_to_analyse_result"`
 }
 
 func (o *OpenAIConfig) GetClient() *openai.Client {
