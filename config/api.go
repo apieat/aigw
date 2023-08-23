@@ -79,7 +79,7 @@ func (a *ApiConfig) GetFunctionByName(pName, mName string) []openai.FunctionDefi
 func (a *ApiConfig) Call(id string, f *openai.FunctionCall) (string, string, json.RawMessage, error) {
 	pName, mName := getPathFromFunctionName(f.Name)
 	logrus.WithField("url", a.server.URL).WithField("path", pName).
-		WithField("name", f.Name).WithField("args", f.Arguments).
+		WithField("name", f.Name).WithField("args", f.Arguments).WithField("id", id).
 		WithField("method", mName).Info("calling back")
 	_, op, err := openapi.GetPathAndMethod(a.def, pName, mName)
 	var callingArg openapi.CallConfig
