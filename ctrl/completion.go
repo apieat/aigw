@@ -48,7 +48,7 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 					Content: arg.ToPrompt(openaiCfg.Templates),
 				},
 			},
-			Temperature:  1,
+			Temperature:  arg.GetTemparature(),
 			FunctionCall: fc,
 		}
 
@@ -84,10 +84,12 @@ func handleCallback(req *openai.ChatCompletionRequest, id string, client *openai
 		var fc = resp.Choices[0].Message.FunctionCall
 		if fc != nil {
 			pName, mName, apiResp, err = apiCfg.Call(id, resp.Choices[0].Message.FunctionCall)
-
 			if err == nil {
 				var errMessage errors.ResponseWithError
-				json.Unmarshal(apiResp, &errMessage)
+				err = json.Unmarshal(apiResp, &errMessage)
+				if err != nil {
+					logrus.WithError(err).WithField("resp", string(apiResp)).Errorln("unmarshal api response failed")
+				}
 				if errors.Is(errMessage.GetError(), errors.ErrorInvalidResponse) {
 					logrus.WithField("resp", string(apiResp)).Errorln("invalid response,retry")
 					retry++

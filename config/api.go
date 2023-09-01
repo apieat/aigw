@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"strconv"
 	"strings"
 
@@ -108,7 +109,11 @@ func (a *ApiConfig) Call(id string, f *openai.FunctionCall) (string, string, jso
 				SetSecurityByDef(a.SecurityArgs, a.def).
 				Do(&callingArg)
 			if err == nil {
-				return pName, mName, sess.GetResult().Response, nil
+				var bts []byte
+				bts, err = ioutil.ReadAll(sess.GetResponse().Body)
+				if err == nil {
+					return pName, mName, json.RawMessage(bts), nil
+				}
 			}
 		}
 	}

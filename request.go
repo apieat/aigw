@@ -11,11 +11,12 @@ import (
 )
 
 type CompletionRequest struct {
-	Prompt    string            `json:"prompt"`
-	Id        string            `json:"id"`
-	Type      string            `json:"type"`
-	Functions []AllowedFunction `json:"functions"`
-	Debug     bool              `json:"debug"`
+	Prompt      string            `json:"prompt"`
+	Id          string            `json:"id"`
+	Type        string            `json:"type"`
+	Functions   []AllowedFunction `json:"functions"`
+	Debug       bool              `json:"debug"`
+	Temparature float32           `json:"temparature"`
 }
 
 type AllowedFunction struct {
@@ -66,6 +67,13 @@ func (c *CompletionRequest) Call(url string) error {
 		}
 	}
 	return err
+}
+
+func (c *CompletionRequest) GetTemparature() float32 {
+	if c.Temparature == 0 {
+		return 1
+	}
+	return c.Temparature
 }
 
 type Response struct {
