@@ -7,10 +7,12 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
 )
 
 type CompletionRequest struct {
+	Instruction string            `json:"instruction"`
 	Prompt      string            `json:"prompt"`
 	Id          string            `json:"id"`
 	Type        string            `json:"type"`
@@ -24,20 +26,35 @@ type AllowedFunction struct {
 	Method string `json:"method"`
 }
 
+func (c *CompletionRequest) ToMessages(instructions, templates map[string]string) []openai.ChatCompletionMessage {
+	var messages []openai.ChatCompletionMessage
+	if c.Instruction != "" {
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: c.ToPrompt(c.Instruction, instructions),
+		})
+	}
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleUser,
+		Content: c.ToPrompt(c.Prompt, templates),
+	})
+	return messages
+}
+
 //ToPrompt returns the prompt. If templates are provided, it will use the first template that matches the type to wrap the prompt.
-func (c *CompletionRequest) ToPrompt(templates ...map[string]string) string {
+func (c *CompletionRequest) ToPrompt(prompt string, templates ...map[string]string) string {
 	if len(templates) > 0 && templates[0] != nil {
 		if c.Type == "" {
 			c.Type = "default"
 		}
 		temp, ok := templates[0][c.Type]
 		if ok {
-			return fmt.Sprintf(temp, c.Prompt)
+			return fmt.Sprintf(temp, prompt)
 		} else {
 			logrus.Errorln("template not found for type", c.Type)
 		}
 	}
-	return c.Prompt
+	return prompt
 }
 
 //Call calls the completion endpoint

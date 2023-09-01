@@ -31,23 +31,19 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 		}
 	}
 
-	logrus.WithField("prompt", arg.ToPrompt(openaiCfg.Templates)).
+	logrus.WithField("prompt", arg.ToPrompt(arg.Prompt, openaiCfg.Templates)).
 		WithField("functions_filter", arg.Functions).
 		WithField("functions", functions).
+		WithField("temparature", arg.Temparature).
 		Debug("get completion request")
 
 	if !arg.Debug {
 
 		var req = openai.ChatCompletionRequest{
-			Model:     openai.GPT3Dot5Turbo0613,
-			Functions: functions,
-			MaxTokens: openaiCfg.MaxTokens,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: arg.ToPrompt(openaiCfg.Templates),
-				},
-			},
+			Model:        openai.GPT3Dot5Turbo0613,
+			Functions:    functions,
+			MaxTokens:    openaiCfg.MaxTokens,
+			Messages:     arg.ToMessages(openaiCfg.Instructions, openaiCfg.Templates),
 			Temperature:  arg.GetTemparature(),
 			FunctionCall: fc,
 		}
@@ -61,7 +57,7 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 		return nil
 	} else {
 		ctx.AddRespond("functions", functions)
-		ctx.AddRespond("prompt", arg.ToPrompt(openaiCfg.Templates))
+		ctx.AddRespond("prompt", arg.ToPrompt(arg.Prompt, openaiCfg.Templates))
 		return nil
 	}
 }

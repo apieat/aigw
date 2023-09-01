@@ -6,6 +6,7 @@ import (
 
 type OpenAIConfig struct {
 	Token          string            `yaml:"token"`
+	Instructions   map[string]string `yaml:"instructions"`
 	Templates      map[string]string `yaml:"templates"`
 	client         *openai.Client
 	Sync           bool `yaml:"sync"`
