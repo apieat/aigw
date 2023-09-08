@@ -31,10 +31,10 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 		}
 	}
 
-	logrus.WithField("prompt", arg.ToPrompt(arg.Prompt, openaiCfg.Templates)).
+	logrus.WithField("prompt", arg.ToPrompt(arg.Prompt, openaiCfg.Templates)).WithField("instruction", arg.ToPrompt(arg.Instruction, openaiCfg.Instructions)).
 		WithField("functions_filter", arg.Functions).
 		WithField("functions", functions).
-		WithField("temparature", arg.Temparature).
+		WithField("temparature", arg.GetTemparature()).
 		Debug("get completion request")
 
 	if !arg.Debug {
@@ -89,6 +89,13 @@ func handleCallback(req *openai.ChatCompletionRequest, id string, client *openai
 				if errors.Is(errMessage.GetError(), errors.ErrorInvalidResponse) {
 					logrus.WithField("resp", string(apiResp)).Errorln("invalid response,retry")
 					retry++
+					if errMessage.Reason != "" {
+						req.Messages = append(req.Messages, openai.ChatCompletionMessage{
+							Role:    openai.ChatMessageRoleSystem,
+							Content: errMessage.Reason,
+						},
+						)
+					}
 					continue
 				}
 				if aiToAnalyse {

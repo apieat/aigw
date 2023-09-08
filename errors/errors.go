@@ -6,7 +6,8 @@ import (
 )
 
 type ResponseWithError struct {
-	Error string
+	Error  string
+	Reason string
 }
 
 func (r *ResponseWithError) GetError() error {
