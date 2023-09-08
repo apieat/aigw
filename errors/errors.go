@@ -7,7 +7,7 @@ import (
 type Error struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
-	Reason  string
+	Reason  string `json:"reason,omitempty"`
 }
 
 func (e *Error) RespondAsJson() bool {
