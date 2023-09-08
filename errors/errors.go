@@ -1,34 +1,33 @@
 package errors
 
 import (
-	"errors"
 	"fmt"
 )
-
-type ResponseWithError struct {
-	Error  string
-	Reason string
-}
-
-func (r *ResponseWithError) GetError() error {
-	if r.Error == "" {
-		return nil
-	}
-	return errors.New(r.Error)
-}
 
 type Error struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+	Reason  string
+}
+
+func (e *Error) RespondAsJson() bool {
+	return true
 }
 
 func (e *Error) Error() string {
 	return fmt.Sprintf("[%d]%s", e.Code, e.Message)
 }
 
-var ErrorInvalidResponse = &Error{
-	Code:    2001,
-	Message: "invalid response",
+const (
+	InvalidResponse = 2001
+)
+
+func ErrorInvalidResponse(reason string) *Error {
+	return &Error{
+		Code:    InvalidResponse,
+		Message: "invalid response",
+		Reason:  reason,
+	}
 }
 
 var ErrorEmptyPrompt = &Error{

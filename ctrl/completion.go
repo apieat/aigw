@@ -81,12 +81,12 @@ func handleCallback(req *openai.ChatCompletionRequest, id string, client *openai
 		if fc != nil {
 			pName, mName, apiResp, err = apiCfg.Call(id, resp.Choices[0].Message.FunctionCall)
 			if err == nil {
-				var errMessage errors.ResponseWithError
+				var errMessage errors.Error
 				err = json.Unmarshal(apiResp, &errMessage)
 				if err != nil {
 					logrus.WithError(err).WithField("resp", string(apiResp)).Errorln("unmarshal api response failed")
 				}
-				if errors.Is(errMessage.GetError(), errors.ErrorInvalidResponse) {
+				if errMessage.Code == errors.InvalidResponse {
 					logrus.WithField("resp", string(apiResp)).Errorln("invalid response,retry")
 					retry++
 					if errMessage.Reason != "" {
