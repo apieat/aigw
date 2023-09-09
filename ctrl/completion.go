@@ -3,6 +3,9 @@ package ctrl
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/apieat/aigw"
 	"github.com/apieat/aigw/errors"
@@ -65,6 +68,7 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 func handleCallback(req *openai.ChatCompletionRequest, id string, client *openai.Client, aiToAnalyse bool, ctx *goblet.Context) (err error) {
 	var apiResp json.RawMessage
 	var pName, mName string
+	var originalMessages = req.Messages
 	retry := 0
 	for retry < 3 {
 		resp, err := client.CreateChatCompletion(
@@ -79,6 +83,7 @@ func handleCallback(req *openai.ChatCompletionRequest, id string, client *openai
 		logrus.WithField("call", resp.Choices[0].Message).WithField("tokens", resp.Usage).Debug("call")
 		var fc = resp.Choices[0].Message.FunctionCall
 		if fc != nil {
+			tryToCleanJsonError(resp.Choices[0].Message.FunctionCall)
 			pName, mName, apiResp, err = apiCfg.Call(id, resp.Choices[0].Message.FunctionCall)
 			if err == nil {
 				var errMessage errors.Error
@@ -90,11 +95,12 @@ func handleCallback(req *openai.ChatCompletionRequest, id string, client *openai
 					logrus.WithField("resp", string(apiResp)).Errorln("invalid response,retry")
 					retry++
 					if errMessage.Reason != "" {
-						req.Messages = append(req.Messages, openai.ChatCompletionMessage{
+						req.Messages = append(originalMessages, openai.ChatCompletionMessage{
 							Role:    openai.ChatMessageRoleSystem,
-							Content: errMessage.Reason,
+							Content: fmt.Sprintf("last response is error,error is '%s', retry no.%d", errMessage.Reason, retry),
 						},
 						)
+						logrus.WithField("reason", errMessage.Reason).WithField("messages", req.Messages).Errorln("add reason to messages")
 					}
 					continue
 				}
@@ -129,4 +135,13 @@ func handleCallback(req *openai.ChatCompletionRequest, id string, client *openai
 		}
 	}
 	return errors.ErrorTooManyRetry
+}
+
+var jsonLastCommaMatcher = regexp.MustCompile(`,\s*}\s*}$`)
+
+func tryToCleanJsonError(fc *openai.FunctionCall) {
+	var matched = jsonLastCommaMatcher.FindString(fc.Arguments)
+	if matched != "" {
+		fc.Arguments = strings.Replace(fc.Arguments, matched, "}}", 1)
+	}
 }
