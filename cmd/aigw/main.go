@@ -5,6 +5,9 @@ import (
 	"github.com/extrame/goblet"
 	"github.com/extrame/goblet/plugin"
 	"github.com/pkg/errors"
+
+	_ "github.com/apieat/aigw/platform/chatgpt"
+	_ "github.com/apieat/aigw/platform/qianfan"
 )
 
 func main() {

@@ -2,3 +2,4 @@ Gmakefile
 deploy/
 vendor/
 config/private*
+deploy_bce/

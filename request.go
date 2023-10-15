@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/apieat/aigw/platform"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
 )
@@ -27,21 +28,19 @@ type AllowedFunction struct {
 }
 
 func (c *CompletionRequest) ToMessages(instructions, templates map[string]string) []openai.ChatCompletionMessage {
-	var messages []openai.ChatCompletionMessage
-	if c.Instruction != "" {
-		messages = append(messages, openai.ChatCompletionMessage{
-			Role:    openai.ChatMessageRoleSystem,
-			Content: c.ToPrompt(c.Instruction, instructions),
-		})
-	}
-	messages = append(messages, openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleUser,
-		Content: c.ToPrompt(c.Prompt, templates),
-	})
-	return messages
+	return platform.Current.ToMessages(c, instructions, templates)
 }
 
-//ToPrompt returns the prompt. If templates are provided, it will use the first template that matches the type to wrap the prompt.
+func (c *CompletionRequest) GetInstruction() string {
+	return c.Instruction
+}
+
+// GetPrompt returns the prompt
+func (c *CompletionRequest) GetPrompt() string {
+	return c.Prompt
+}
+
+// ToPrompt returns the prompt. If templates are provided, it will use the first template that matches the type to wrap the prompt.
 func (c *CompletionRequest) ToPrompt(prompt string, templates ...map[string]string) string {
 	if len(templates) > 0 && templates[0] != nil {
 		if c.Type == "" {
@@ -57,7 +56,7 @@ func (c *CompletionRequest) ToPrompt(prompt string, templates ...map[string]stri
 	return prompt
 }
 
-//Call calls the completion endpoint
+// Call calls the completion endpoint
 func (c *CompletionRequest) Call(url string) error {
 	var bts bytes.Buffer
 	err := json.NewEncoder(&bts).Encode(&c)

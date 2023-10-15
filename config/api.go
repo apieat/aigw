@@ -2,7 +2,8 @@ package config
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -77,7 +78,7 @@ func (a *ApiConfig) GetFunctionByName(pName, mName string) []openai.FunctionDefi
 	return ret
 }
 
-func (a *ApiConfig) Call(id string, f *openai.FunctionCall) (string, string, json.RawMessage, error) {
+func (a *ApiConfig) Call(id string, functions []openai.FunctionDefinition, f *openai.FunctionCall) (string, string, json.RawMessage, error) {
 	pName, mName := getPathFromFunctionName(f.Name)
 	logrus.WithField("url", a.server.URL).WithField("path", pName).
 		WithField("name", f.Name).WithField("args", f.Arguments).WithField("id", id).
@@ -97,7 +98,25 @@ func (a *ApiConfig) Call(id string, f *openai.FunctionCall) (string, string, jso
 		if err == nil {
 			var sess *openapi.CallingSession
 			if body, ok := inputs["body"]; ok {
+				fmt.Printf("%T", body)
 				if bodyObj, ok := body.(map[string]interface{}); ok {
+					var selectedFunction *openai.FunctionDefinition
+					if functions != nil {
+						for _, function := range functions {
+							if function.Name == f.Name {
+								selectedFunction = &function
+								break
+							}
+						}
+					} else if len(functions) > 0 {
+						selectedFunction = &functions[0]
+					}
+					if selectedFunction != nil {
+						if schema, ok := selectedFunction.Parameters.(*openapi3.Schema); ok {
+							bodyObj = fixFormate(bodyObj, schema)
+						}
+					}
+
 					callingArg.Input = bodyObj
 				}
 			}
@@ -110,7 +129,7 @@ func (a *ApiConfig) Call(id string, f *openai.FunctionCall) (string, string, jso
 				Do(&callingArg)
 			if err == nil {
 				var bts []byte
-				bts, err = ioutil.ReadAll(sess.GetResponse().Body)
+				bts, err = io.ReadAll(sess.GetResponse().Body)
 				if err == nil {
 					return pName, mName, json.RawMessage(bts), nil
 				}
@@ -165,4 +184,36 @@ func getParameterJson(p *openapi3.Operation) *openapi3.Schema {
 	}
 
 	return &parameters
+}
+
+func fixFormate(bodyObj map[string]interface{}, schema *openapi3.Schema) map[string]interface{} {
+	bodySchema, ok := schema.Properties["body"]
+	if ok {
+		for name, property := range bodySchema.Value.Properties {
+			logrus.WithField("name", name).WithField("property", property).WithField("value", bodyObj[name]).Debug("fixing formate")
+			if v, ok := bodyObj[name]; ok {
+				switch property.Value.Type {
+				case "boolean":
+					if v == "true" {
+						bodyObj[name] = true
+					} else if v == "false" {
+						bodyObj[name] = false
+					}
+				case "number":
+					if vStr, ok := v.(string); ok {
+						if vFloat, err := strconv.ParseFloat(vStr, 64); err == nil {
+							bodyObj[name] = vFloat
+						} else {
+							logrus.WithField("name", name).WithField("property", property).
+								WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a number")
+							delete(bodyObj, name)
+						}
+					}
+				default:
+					logrus.WithField("name", name).WithField("property", property).WithField("wanted type", property.Value.Type).WithField("value", v).Warn("unknown type")
+				}
+			}
+		}
+	}
+	return bodyObj
 }

@@ -1,4 +1,4 @@
-package ctrl
+package chatgpt
 
 import (
 	"encoding/json"
