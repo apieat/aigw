@@ -96,8 +96,10 @@ func handleCallback(req *openai.ChatCompletionRequest, functions []openai.Functi
 					logrus.WithField("resp", string(apiResp)).Errorln("invalid response,retry")
 					retry++
 					if errMessage.Reason != "" {
+						originalMessages = platform.Current.AddResponseToMessage(originalMessages, resp)
+
 						req.Messages = append(originalMessages, openai.ChatCompletionMessage{
-							Role:    openai.ChatMessageRoleSystem,
+							Role:    openai.ChatMessageRoleUser,
 							Content: fmt.Sprintf("last response is error,error is '%s', retry no.%d", errMessage.Reason, retry),
 						},
 						)

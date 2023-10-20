@@ -53,6 +53,10 @@ func (q *Chatgpt) CreateChatCompletion(req *openai.ChatCompletionRequest) (platf
 	return nil, err
 }
 
+func (q *Chatgpt) AddResponseToMessage(req []openai.ChatCompletionMessage, resp platform.ChatCompletionResponse) []openai.ChatCompletionMessage {
+	return req
+}
+
 func init() {
 	platform.RegisterPlatform("chatgpt", &Chatgpt{})
 }

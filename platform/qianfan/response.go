@@ -1,9 +1,11 @@
 package qianfan
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
+	"github.com/sirupsen/logrus"
 )
 
 type ChatCompletionResponse struct {
@@ -16,13 +18,34 @@ type ChatCompletionResponse struct {
 }
 
 func (r *ChatCompletionResponse) GetFunctionCallArguments(reqFc *openai.FunctionCall) (*openai.FunctionCall, error) {
-	var jsonStr = strings.TrimPrefix(r.Result, "```json")
-	jsonStr = strings.TrimSuffix(jsonStr, "```")
-	jsonStr = strings.TrimSpace(jsonStr)
+	logrus.Info("get function call arguments", reqFc, r)
+	var jsonStr string
+	if strings.Contains(r.Result, "```json") {
+		_, jsonStr, _ = strings.Cut(r.Result, "```json")
+		jsonStr, _, _ = strings.Cut(jsonStr, "```")
+	} else {
+		jsonStr = r.Result
+	}
+	// jsonStr = tryToCleanJsonError(strings.TrimSpace(jsonStr))
 	return &openai.FunctionCall{
 		Name:      reqFc.Name,
 		Arguments: jsonStr,
 	}, nil
+}
+
+var jsonArrayBodyCommaMatcher = regexp.MustCompile(`^{\s+"body":\s*\[\s*{`)
+var jsonArrayBodyEndCommaMatcher = regexp.MustCompile(`}\s*\]\s*}$`)
+
+func tryToCleanJsonError(jsonStr string) string {
+	var matched = jsonArrayBodyCommaMatcher.FindString(jsonStr)
+	if matched != "" {
+		jsonStr = strings.Replace(jsonStr, matched, `{"body":{`, 1)
+		matched = jsonArrayBodyEndCommaMatcher.FindString(jsonStr)
+		if matched != "" {
+			jsonStr = strings.Replace(jsonStr, matched, "}}", 1)
+		}
+	}
+	return jsonStr
 }
 
 func (r *ChatCompletionResponse) GetMessage() *openai.ChatCompletionMessage {

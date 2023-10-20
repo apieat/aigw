@@ -118,10 +118,14 @@ func (a *ApiConfig) Call(id string, functions []openai.FunctionDefinition, f *op
 					}
 
 					callingArg.Input = bodyObj
+				} else {
+					callingArg.RequestBody = body
+					callingArg.InputType = openapi.InputType_AsWholeRaw
 				}
 			}
 			logrus.
-				WithField("input", callingArg.Input).Info("calling back with input")
+				WithField("input", callingArg.Input).
+				WithField("body", callingArg.RequestBody).Info("calling back with input")
 			sess, err = openapi.NewCalling().
 				SetPathAndMethod(pName, mName, op).
 				SetServer(a.server).

@@ -34,7 +34,7 @@ func (q *Qianfan) ToMessages(c platform.CompletionRequest, instructions, templat
 	// }
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
-		Content: content + c.ToPrompt(c.GetPrompt(), templates),
+		Content: content + ", " + c.ToPrompt(c.GetPrompt(), templates),
 	})
 	return messages
 }
@@ -115,6 +115,18 @@ func (q *Qianfan) AddFunctionsToMessage(functions []openai.FunctionDefinition, f
 	lastMessage.Content += "\n输出只能以以下JSON格式输出，格式如下：\"\"\"" + buf.String() + "\"\"\""
 	req.Messages[len(req.Messages)-1] = lastMessage
 	logrus.WithField("parameters", parameters).WithField("message", lastMessage).Debug("add function parameters")
+	return req
+}
+
+func (q *Qianfan) AddResponseToMessage(req []openai.ChatCompletionMessage, resp platform.ChatCompletionResponse) []openai.ChatCompletionMessage {
+	if tr, ok := resp.(*ChatCompletionResponse); ok {
+		req = append(req, openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: tr.Result,
+		})
+	} else {
+		fmt.Printf("resp is not ChatCompletionResponse,resp is %T", resp)
+	}
 	return req
 }
 
