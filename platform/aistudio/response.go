@@ -8,6 +8,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type ChatCompletionResponseWrapper struct {
+	LogId     string                 `json:"logId"`
+	ErrorCode int                    `json:"errorCode"`
+	ErrorMsg  string                 `json:"errorMsg"`
+	Result    ChatCompletionResponse `json:"result"`
+}
+
 type ChatCompletionResponse struct {
 	ID      string       `json:"id"`
 	Object  string       `json:"object"`

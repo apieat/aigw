@@ -52,9 +52,9 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 		req = platform.Current.AddFunctionsToMessage(functions, fc, req)
 
 		if openaiCfg.Sync {
-			return handleCallback(req, functions, fc, arg.Id, openaiCfg.AskAiToAnalyse, ctx)
+			return handleCallback(req, functions, fc, arg.Id, arg.Type, openaiCfg.AskAiToAnalyse, ctx)
 		} else {
-			go handleCallback(req, functions, fc, arg.Id, false, nil)
+			go handleCallback(req, functions, fc, arg.Id, arg.Type, false, nil)
 		}
 		logrus.Debug("completion finished")
 		return nil
@@ -65,14 +65,14 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 	}
 }
 
-func handleCallback(req *openai.ChatCompletionRequest, functions []openai.FunctionDefinition, fc *openai.FunctionCall, id string, aiToAnalyse bool, ctx *goblet.Context) (err error) {
+func handleCallback(req *openai.ChatCompletionRequest, functions []openai.FunctionDefinition, fc *openai.FunctionCall, id, typ string, aiToAnalyse bool, ctx *goblet.Context) (err error) {
 	var apiResp json.RawMessage
 	var pName, mName string
 	var originalMessages = req.Messages
 	retry := 0
 	for retry < 3 {
-		logrus.WithField("retry", retry).WithField("req", req).Debug("create chat completion")
-		resp, err := platform.Current.CreateChatCompletion(req)
+		logrus.WithField("retry", retry).WithField("req", req).WithField("type", typ).Debug("create chat completion")
+		resp, err := platform.Current.CreateChatCompletion(req, typ)
 		if err != nil {
 			retry++
 			continue
@@ -121,7 +121,7 @@ func handleCallback(req *openai.ChatCompletionRequest, functions []openai.Functi
 									Content: string(apiResp),
 								},
 							},
-						},
+						}, typ,
 					)
 					if err == nil && ctx != nil {
 						ctx.Respond(analyseResp.GetMessage())

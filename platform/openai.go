@@ -17,28 +17,12 @@ type AIConfig struct {
 	Instructions   map[string]string `yaml:"instructions"`
 	Templates      map[string]string `yaml:"templates"`
 	client         *openai.Client
-	Sync           bool          `yaml:"sync"`
-	MaxTokens      int           `yaml:"max_tokens"`
-	AskAiToAnalyse bool          `yaml:"ask_ai_to_analyse_result"`
-	Url            string        `yaml:"url"`
-	Oauth2         *Oauth2Client `yaml:"oauth2"`
-	Platform       string        `yaml:"platform"`
-}
-
-func (o *AIConfig) GetClient() *openai.Client {
-
-	if o.client == nil {
-		var config openai.ClientConfig
-		if o.Url != "" {
-			config = openai.DefaultAzureConfig(o.GetToken(), o.Url)
-		} else {
-			config = openai.DefaultConfig(o.GetToken())
-		}
-		o.client = openai.NewClientWithConfig(config)
-
-		openai.NewClient(o.GetToken())
-	}
-	return o.client
+	Sync           bool              `yaml:"sync"`
+	MaxTokens      int               `yaml:"max_tokens"`
+	AskAiToAnalyse bool              `yaml:"ask_ai_to_analyse_result"`
+	Url            map[string]string `yaml:"url"`
+	Oauth2         *Oauth2Client     `yaml:"oauth2"`
+	Platform       string            `yaml:"platform"`
 }
 
 func (o *AIConfig) GetToken() string {

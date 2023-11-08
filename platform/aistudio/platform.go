@@ -15,18 +15,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Qianfan struct {
+type AiStudio struct {
 	// client *openai.Client
 	urls  map[string]*url.URL
 	token string
 }
 
-func (q *Qianfan) Init(config *platform.AIConfig) (err error) {
+func (q *AiStudio) Init(config *platform.AIConfig) (err error) {
 	// q.client = config.GetClient()
 	q.token = config.GetToken()
 	q.urls = make(map[string]*url.URL)
 	for k, u := range config.Url {
-		q.urls[k], err = url.Parse("https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop" + u + "?access_token=" + q.token)
+		q.urls[k], err = url.Parse("https://aistudio.baidu.com/llm/lmapi/v1" + u)
 		if err != nil {
 			return err
 		}
@@ -34,7 +34,7 @@ func (q *Qianfan) Init(config *platform.AIConfig) (err error) {
 	return err
 }
 
-func (q *Qianfan) ToMessages(c platform.CompletionRequest, instructions, templates map[string]string) []openai.ChatCompletionMessage {
+func (q *AiStudio) ToMessages(c platform.CompletionRequest, instructions, templates map[string]string) []openai.ChatCompletionMessage {
 	var messages []openai.ChatCompletionMessage
 	// var content string
 	var instruction = c.GetInstruction()
@@ -83,7 +83,9 @@ func (p *ParameterDescription) MarshalJSON() ([]byte, error) {
 
 }
 
-func (q *Qianfan) CreateChatCompletion(req *openai.ChatCompletionRequest, typ string) (platform.ChatCompletionResponse, error) {
+func (q *AiStudio) CreateChatCompletion(req *openai.ChatCompletionRequest, typ string) (platform.ChatCompletionResponse, error) {
+	req.Model = ""
+	req.Stream = false
 	var buf bytes.Buffer
 	var encoder = json.NewEncoder(&buf)
 	encoder.SetIndent("", "")
@@ -99,23 +101,32 @@ func (q *Qianfan) CreateChatCompletion(req *openai.ChatCompletionRequest, typ st
 		}
 	}
 
-	resp, err := http.Post(qUrl.String(), "application/json", &buf)
+	request, err := http.NewRequest(http.MethodPost, qUrl.String(), &buf)
+
+	if err == nil {
+		request.Header.Set("Authorization", "token "+q.token)
+		request.Header.Set("Content-Type", "application/json")
+
+		logrus.WithField("url", qUrl.String()).WithField("token", q.token).Debug("create chat completion request")
+	}
+
+	resp, err := http.DefaultClient.Do(request)
 	if err == nil {
 		var bts []byte
 		bts, err = io.ReadAll(resp.Body)
 		if err == nil {
 			logrus.Debug("create chat completion resposne", string(bts))
-			var res ChatCompletionResponse
+			var res ChatCompletionResponseWrapper
 			err = json.Unmarshal(bts, &res)
 			if err == nil {
-				return &res, err
+				return &res.Result, err
 			}
 		}
 	}
 	return nil, err
 }
 
-func (q *Qianfan) AddFunctionsToMessage(functions []openai.FunctionDefinition, fc *openai.FunctionCall, req *openai.ChatCompletionRequest) *openai.ChatCompletionRequest {
+func (q *AiStudio) AddFunctionsToMessage(functions []openai.FunctionDefinition, fc *openai.FunctionCall, req *openai.ChatCompletionRequest) *openai.ChatCompletionRequest {
 	var selectedFunction *openai.FunctionDefinition
 	if fc != nil {
 		for _, function := range functions {
@@ -143,7 +154,7 @@ func (q *Qianfan) AddFunctionsToMessage(functions []openai.FunctionDefinition, f
 	return req
 }
 
-func (q *Qianfan) AddResponseToMessage(req []openai.ChatCompletionMessage, resp platform.ChatCompletionResponse) []openai.ChatCompletionMessage {
+func (q *AiStudio) AddResponseToMessage(req []openai.ChatCompletionMessage, resp platform.ChatCompletionResponse) []openai.ChatCompletionMessage {
 	if tr, ok := resp.(*ChatCompletionResponse); ok {
 		req = append(req, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleSystem,
@@ -190,5 +201,5 @@ func schemaToParameterDescriptions(schema *openapi3.Schema) interface{} {
 }
 
 func init() {
-	platform.RegisterPlatform("qianfan", &Qianfan{})
+	platform.RegisterPlatform("aistudio", &AiStudio{})
 }
