@@ -13,9 +13,12 @@ import (
 )
 
 type CompletionRequest struct {
-	Instruction string            `json:"instruction"`
-	Prompt      string            `json:"prompt"`
-	Id          string            `json:"id"`
+	Instruction string `json:"instruction"`
+	Prompt      string `json:"prompt"`
+	Id          string `json:"id"`
+	//action mode for the request, default is "json" supported: json, text, function_call
+	Mode string `json:"mode"`
+	//Type for template and instructions
 	Type        string            `json:"type"`
 	Functions   []AllowedFunction `json:"functions"`
 	Debug       bool              `json:"debug"`

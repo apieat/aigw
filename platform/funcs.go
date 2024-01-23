@@ -12,6 +12,7 @@ type Platform interface {
 	//将系统响应加入到消息列表中，部分平台在多次提交时需要将上次的响应加入到消息列表中
 	AddResponseToMessage(messages []openai.ChatCompletionMessage, resp ChatCompletionResponse) []openai.ChatCompletionMessage
 	Init(cfg *AIConfig) error
+	GetModel(typ string) string
 }
 
 type CompletionRequest interface {

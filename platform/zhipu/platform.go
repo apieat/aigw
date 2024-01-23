@@ -1,4 +1,4 @@
-package aistudio
+package zhipu
 
 import (
 	"bytes"
@@ -8,37 +8,34 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/apieat/aigw/platform"
+	"github.com/extrame/jose/jws"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
 )
 
-type AiStudio struct {
+type Zhipu struct {
 	// client *openai.Client
-	urls  map[string]*url.URL
+	url   *url.URL
 	token string
 }
 
-func (q *AiStudio) Init(config *platform.AIConfig) (err error) {
+// GetModel implements platform.Platform.
+func (*Zhipu) GetModel(typ string) string {
+	return "glm-4"
+}
+
+func (q *Zhipu) Init(config *platform.AIConfig) (err error) {
 	// q.client = config.GetClient()
 	q.token = config.GetToken()
-	q.urls = make(map[string]*url.URL)
-	for k, u := range config.Url {
-		q.urls[k], err = url.Parse("https://aistudio.baidu.com/llm/lmapi/v1" + u)
-		if err != nil {
-			return err
-		}
-	}
-	return err
+	q.url, _ = url.Parse("https://open.bigmodel.cn/api/paas/v4/chat/completions")
+	return nil
 }
 
-func (q *AiStudio) GetModel(typ string) string {
-	return ""
-}
-
-func (q *AiStudio) ToMessages(c platform.CompletionRequest, instructions, templates map[string]string) []openai.ChatCompletionMessage {
+func (q *Zhipu) ToMessages(c platform.CompletionRequest, instructions, templates map[string]string) []openai.ChatCompletionMessage {
 	var messages []openai.ChatCompletionMessage
 	// var content string
 	var instruction = c.GetInstruction()
@@ -87,31 +84,33 @@ func (p *ParameterDescription) MarshalJSON() ([]byte, error) {
 
 }
 
-func (q *AiStudio) CreateChatCompletion(req *openai.ChatCompletionRequest, typ string) (platform.ChatCompletionResponse, error) {
-	req.Model = ""
+func (q *Zhipu) CreateChatCompletion(req *openai.ChatCompletionRequest, typ string) (platform.ChatCompletionResponse, error) {
 	req.Stream = false
+	if req.Temperature <= 0 || req.Temperature >= 1 {
+		req.Temperature = 0.95
+	}
 	var buf bytes.Buffer
 	var encoder = json.NewEncoder(&buf)
 	encoder.SetIndent("", "")
 	encoder.Encode(req)
 
-	qUrl, ok := q.urls[typ]
+	// qUrl, ok := q.urls[typ]
 
-	if !ok {
-		if qUrl, ok = q.urls["default"]; !ok {
-			return nil, fmt.Errorf("url not found for type %s", typ)
-		} else {
-			logrus.WithField("type", typ).WithField("url", qUrl.String()).Warnln("url not found for type, use default instead")
-		}
-	}
+	// if !ok {
+	// if qUrl, ok = q.urls["default"]; !ok {
+	// 	return nil, fmt.Errorf("url not found for type %s", typ)
+	// } else {
+	// 	logrus.WithField("type", typ).WithField("url", qUrl.String()).Warnln("url not found for type, use default instead")
+	// }
+	// }
 
-	request, err := http.NewRequest(http.MethodPost, qUrl.String(), &buf)
+	request, err := http.NewRequest(http.MethodPost, q.url.String(), &buf)
 
 	if err == nil {
-		request.Header.Set("Authorization", "token "+q.token)
+		request.Header.Set("Authorization", jwtEncode(q.token))
 		request.Header.Set("Content-Type", "application/json")
 
-		logrus.WithField("url", qUrl.String()).WithField("token", q.token).Debug("create chat completion request")
+		logrus.WithField("url", q.url.String()).WithField("token", q.token).Debug("create chat completion request")
 	}
 
 	resp, err := http.DefaultClient.Do(request)
@@ -120,17 +119,18 @@ func (q *AiStudio) CreateChatCompletion(req *openai.ChatCompletionRequest, typ s
 		bts, err = io.ReadAll(resp.Body)
 		if err == nil {
 			logrus.Debug("create chat completion resposne", string(bts))
-			var res ChatCompletionResponseWrapper
+			var res ChatCompletionResponse
 			err = json.Unmarshal(bts, &res)
+			logrus.Debug("parsed resposne", res, err)
 			if err == nil {
-				return &res.Result, err
+				return &res, err
 			}
 		}
 	}
 	return nil, err
 }
 
-func (q *AiStudio) AddFunctionsToMessage(functions []openai.FunctionDefinition, fc *openai.FunctionCall, req *openai.ChatCompletionRequest) *openai.ChatCompletionRequest {
+func (q *Zhipu) AddFunctionsToMessage(functions []openai.FunctionDefinition, fc *openai.FunctionCall, req *openai.ChatCompletionRequest) *openai.ChatCompletionRequest {
 	var selectedFunction *openai.FunctionDefinition
 	if fc != nil {
 		for _, function := range functions {
@@ -154,18 +154,15 @@ func (q *AiStudio) AddFunctionsToMessage(functions []openai.FunctionDefinition, 
 	encoder.SetIndent("", "")
 	encoder.Encode(parameters)
 	var lastMessage = req.Messages[len(req.Messages)-1]
-	lastMessage.Content += "\n你的回答只能以以下JSON格式输出，格式如下：\"\"\"" + buf.String() + "\"\"\""
+	lastMessage.Content += "\n你的回答只能以以下JSON格式输出，JSON里面不能有注释，格式如下：\"\"\"" + buf.String() + "\"\"\""
 	req.Messages[len(req.Messages)-1] = lastMessage
 	logrus.WithField("parameters", parameters).WithField("message", lastMessage).Debug("add function parameters")
 	return req
 }
 
-func (q *AiStudio) AddResponseToMessage(req []openai.ChatCompletionMessage, resp platform.ChatCompletionResponse) []openai.ChatCompletionMessage {
+func (q *Zhipu) AddResponseToMessage(req []openai.ChatCompletionMessage, resp platform.ChatCompletionResponse) []openai.ChatCompletionMessage {
 	if tr, ok := resp.(*ChatCompletionResponse); ok {
-		req = append(req, openai.ChatCompletionMessage{
-			Role:    openai.ChatMessageRoleSystem,
-			Content: tr.Result,
-		})
+		req = append(req, tr.Choices[0].Message)
 	} else {
 		fmt.Printf("resp is not ChatCompletionResponse,resp is %T", resp)
 	}
@@ -206,6 +203,30 @@ func schemaToParameterDescriptions(schema *openapi3.Schema) interface{} {
 	}
 }
 
+func jwtEncode(token string) string {
+	id, secret, right := strings.Cut(token, ".")
+	if !right {
+		logrus.WithField("token", token).Errorln("token is invalid")
+		return ""
+	}
+	var claims = make(jws.Claims)
+	var now = time.Now()
+	claims.Set("api_key", id)
+	claims.Set("exp", now.Add(1*time.Hour).Unix()*1000)
+	claims.Set("timestamp", now.Unix()*1000)
+	logrus.Info("claims", claims)
+	j := jws.NewJWT(claims, jws.GetSigningMethod("HS256"))
+
+	var secretBts = []byte(secret)
+
+	b, err := j.Serialize(secretBts)
+	if err == nil {
+		return string(b)
+	}
+	logrus.WithError(err).WithField("token", token).Errorln("jwt encode failed")
+	return ""
+}
+
 func init() {
-	platform.RegisterPlatform("aistudio", &AiStudio{})
+	platform.RegisterPlatform("zhipu", &Zhipu{})
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -196,28 +197,72 @@ func fixFormate(bodyObj map[string]interface{}, schema *openapi3.Schema) map[str
 		for name, property := range bodySchema.Value.Properties {
 			logrus.WithField("name", name).WithField("property", property).WithField("value", bodyObj[name]).Debug("fixing formate")
 			if v, ok := bodyObj[name]; ok {
-				switch property.Value.Type {
-				case "boolean":
-					if v == "true" {
-						bodyObj[name] = true
-					} else if v == "false" {
-						bodyObj[name] = false
-					}
-				case "number":
-					if vStr, ok := v.(string); ok {
-						if vFloat, err := strconv.ParseFloat(vStr, 64); err == nil {
-							bodyObj[name] = vFloat
-						} else {
-							logrus.WithField("name", name).WithField("property", property).
-								WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a number")
-							delete(bodyObj, name)
-						}
-					}
-				default:
-					logrus.WithField("name", name).WithField("property", property).WithField("wanted type", property.Value.Type).WithField("value", v).Warn("unknown type")
+				newV, ok := fixSingle(property, name, v)
+				if ok {
+					bodyObj[name] = newV
 				}
 			}
 		}
 	}
 	return bodyObj
+}
+
+func fixSingle(property *openapi3.SchemaRef, name string, v interface{}) (interface{}, bool) {
+	switch property.Value.Type {
+	case "boolean":
+		if v == "true" || v == "是" {
+			return true, true
+		} else if v == "false" || v == "否" {
+			return false, true
+		} else {
+			logrus.WithField("property", property).WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a boolean")
+			return nil, false
+		}
+	case "number":
+		if vStr, ok := v.(string); ok {
+			if vFloat, err := strconv.ParseFloat(vStr, 64); err == nil {
+				return vFloat, true
+			} else {
+				logrus.WithField("name", name).WithField("property", property).
+					WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a number")
+			}
+		}
+	case "array":
+		rv := reflect.ValueOf(v)
+		if rv.Kind() == reflect.Slice {
+			var arr []interface{}
+			for i := 0; i < rv.Len(); i++ {
+				var item = rv.Index(i).Interface()
+				if fixed, ok := fixSingle(property.Value.Items, name, item); ok {
+					arr = append(arr, fixed)
+				} else {
+					arr = append(arr, item)
+				}
+			}
+			return arr, true
+		} else {
+			logrus.WithField("name", name).WithField("property", property).
+				WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a array")
+		}
+	case "object":
+		rv := reflect.ValueOf(v)
+		if rv.Kind() == reflect.Map {
+			var obj = make(map[string]interface{})
+			for _, key := range rv.MapKeys() {
+				var item = rv.MapIndex(key).Interface()
+				if fixed, ok := fixSingle(property.Value.Properties[key.String()], name, item); ok {
+					obj[key.String()] = fixed
+				} else {
+					obj[key.String()] = item
+				}
+			}
+			return obj, true
+		} else {
+			logrus.WithField("name", name).WithField("property", property).
+				WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a object")
+		}
+	default:
+		logrus.WithField("name", name).WithField("property", property).WithField("wanted type", property.Value.Type).WithField("value", v).Warn("unknown type")
+	}
+	return nil, false
 }

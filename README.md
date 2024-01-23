@@ -47,4 +47,4 @@ post /completion
 
 Try our editor online : [Apieat](https://apieat.com)
 
-中文用户：[百家饭OpenAPI平台](https://rongapi.cn)
+

@@ -43,7 +43,7 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 	if !arg.Debug {
 
 		var req = &openai.ChatCompletionRequest{
-			Model:       openai.GPT3Dot5Turbo0613,
+			Model:       platform.Current.GetModel(arg.Type),
 			MaxTokens:   openaiCfg.MaxTokens,
 			Messages:    arg.ToMessages(openaiCfg.Instructions, openaiCfg.Templates),
 			Temperature: arg.GetTemparature(),
@@ -52,9 +52,9 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 		req = platform.Current.AddFunctionsToMessage(functions, fc, req)
 
 		if openaiCfg.Sync {
-			return handleCallback(req, functions, fc, arg.Id, arg.Type, openaiCfg.AskAiToAnalyse, ctx)
+			return handleCallback(req, functions, fc, arg.Id, arg.Mode, arg.Type, openaiCfg.AskAiToAnalyse, ctx)
 		} else {
-			go handleCallback(req, functions, fc, arg.Id, arg.Type, false, nil)
+			go handleCallback(req, functions, fc, arg.Id, arg.Mode, arg.Type, false, nil)
 		}
 		logrus.Debug("completion finished")
 		return nil
@@ -65,7 +65,7 @@ func (c *Completion) Post(ctx *goblet.Context, arg aigw.CompletionRequest) error
 	}
 }
 
-func handleCallback(req *openai.ChatCompletionRequest, functions []openai.FunctionDefinition, fc *openai.FunctionCall, id, typ string, aiToAnalyse bool, ctx *goblet.Context) (err error) {
+func handleCallback(req *openai.ChatCompletionRequest, functions []openai.FunctionDefinition, fc *openai.FunctionCall, id, mode, typ string, aiToAnalyse bool, ctx *goblet.Context) (err error) {
 	var apiResp json.RawMessage
 	var pName, mName string
 	var originalMessages = req.Messages

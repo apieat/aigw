@@ -1,6 +1,7 @@
-package aistudio
+package zhipu
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 
@@ -8,30 +9,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type ChatCompletionResponseWrapper struct {
-	LogId     string                 `json:"logId"`
-	ErrorCode int                    `json:"errorCode"`
-	ErrorMsg  string                 `json:"errorMsg"`
-	Result    ChatCompletionResponse `json:"result"`
-}
-
-type ChatCompletionResponse struct {
-	ID      string       `json:"id"`
-	Object  string       `json:"object"`
-	Created int64        `json:"created"`
-	Model   string       `json:"model"`
-	Result  string       `json:"result"`
-	Usage   openai.Usage `json:"usage"`
-}
+type ChatCompletionResponse openai.ChatCompletionResponse
 
 func (r *ChatCompletionResponse) GetFunctionCallArguments(reqFc *openai.FunctionCall) (*openai.FunctionCall, error) {
 	logrus.Info("get function call arguments", reqFc, r)
 	var jsonStr string
-	if strings.Contains(r.Result, "```json") {
-		_, jsonStr, _ = strings.Cut(r.Result, "```json")
+	if len(r.Choices) == 0 {
+		return nil, errors.New("no choices")
+	}
+	var message = r.Choices[0].Message.Content
+	if strings.Contains(message, "```json") {
+		_, jsonStr, _ = strings.Cut(message, "```json")
 		jsonStr, _, _ = strings.Cut(jsonStr, "```")
 	} else {
-		jsonStr = r.Result
+		jsonStr = message
 	}
 	jsonStr = findLineBreakAfterComments(jsonStr)
 	jsonStr = strings.ReplaceAll(jsonStr, "\n", "")
@@ -75,7 +66,5 @@ func tryToCleanJsonError(jsonStr string) string {
 }
 
 func (r *ChatCompletionResponse) GetMessage() *openai.ChatCompletionMessage {
-	return &openai.ChatCompletionMessage{
-		Content: r.Result,
-	}
+	return &r.Choices[0].Message
 }

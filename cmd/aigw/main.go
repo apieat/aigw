@@ -9,6 +9,7 @@ import (
 	_ "github.com/apieat/aigw/platform/aistudio"
 	_ "github.com/apieat/aigw/platform/chatgpt"
 	_ "github.com/apieat/aigw/platform/qianfan"
+	_ "github.com/apieat/aigw/platform/zhipu"
 )
 
 func main() {

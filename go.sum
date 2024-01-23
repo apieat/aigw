@@ -91,6 +91,8 @@ github.com/extrame/goblet v0.0.0-20230411030120-0f932575eb82 h1:8g1UaiTUCFVrCYK8
 github.com/extrame/goblet v0.0.0-20230411030120-0f932575eb82/go.mod h1:HiatBm1AqFjqkF3rQ0btS0NZDNLAi2sVRLAH2ztFe8s=
 github.com/extrame/goblet v0.0.0-20230629031753-7e9c253f9810 h1:YMoYizh32XuelDBIV01EnC5e8a5wOrWVTV5tpymRQtM=
 github.com/extrame/goblet v0.0.0-20230629031753-7e9c253f9810/go.mod h1:Iq/DGji9mAxiJI0bId92u5PurK+oytFyaUrrE4+i59c=
+github.com/extrame/jose v0.0.0-20230713040001-a8d6daaf8143 h1:OcTYSXqdlvRVrzJHveQQ3AUJRpSJWgqfYpp43DSvLQQ=
+github.com/extrame/jose v0.0.0-20230713040001-a8d6daaf8143/go.mod h1:L9X4Ds8Y9OsdqN9m6we0O56QWFRFCi7GDs3Lb9B5z3E=
 github.com/extrame/smtpoverttl v0.0.0-20140504083549-9b082db561b3/go.mod h1:+JdiqNdWaviEknl2Uw+iPLZzSqQhRZjmYJm0RU+kQPc=
 github.com/extrame/unmarshall v0.0.0-20230411030008-5317d6be714c h1:Lvk74ANv/RlokCF2FG7p1zBQpLLtIhPMqPEyri/TvgE=
 github.com/extrame/unmarshall v0.0.0-20230411030008-5317d6be714c/go.mod h1:tINaT2qlcluvnzkyOtixOwlT0i9MTSRlfnw9ytwsKVs=

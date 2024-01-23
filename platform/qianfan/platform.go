@@ -21,6 +21,11 @@ type Qianfan struct {
 	token string
 }
 
+// GetModel implements platform.Platform.
+func (*Qianfan) GetModel(typ string) string {
+	return ""
+}
+
 func (q *Qianfan) Init(config *platform.AIConfig) (err error) {
 	// q.client = config.GetClient()
 	q.token = config.GetToken()

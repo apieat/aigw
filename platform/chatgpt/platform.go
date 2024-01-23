@@ -12,6 +12,11 @@ type Chatgpt struct {
 	client *openai.Client
 }
 
+// GetModel implements platform.Platform.
+func (*Chatgpt) GetModel(typ string) string {
+	return openai.GPT3Dot5Turbo0613
+}
+
 func (q *Chatgpt) Init(config *platform.AIConfig) error {
 	q.client = q.GetClient(config)
 	return nil

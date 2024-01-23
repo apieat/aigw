@@ -15,6 +15,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.12.3 // indirect
 	github.com/extrame/go-bower v0.0.0-20150602065443-bcc81c71c9b3 // indirect
 	github.com/extrame/go-random v0.0.0-20160517052123-1d8679eca4e2 // indirect
+	github.com/extrame/jose v0.0.0-20230713040001-a8d6daaf8143 // indirect
 	github.com/extrame/unmarshall v0.0.0-20230629031606-ced0ffa5388c // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.5 // indirect
