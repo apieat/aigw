@@ -25,16 +25,21 @@ func Init(fileName string) (cfg *Config, err error) {
 		return nil, err
 	}
 
-	err = config.Platform.Init()
+	err = config.Init()
 
-	if err != nil {
-		return nil, err
-	}
-
-	err = config.Api.Init()
 	if err != nil {
 		return nil, err
 	}
 
 	return &config, nil
+}
+
+func (c *Config) Init() error {
+	err := c.Platform.Init()
+
+	if err != nil {
+		return err
+	}
+
+	return c.Api.Init()
 }
