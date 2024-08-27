@@ -53,14 +53,14 @@ func (q *Zhipu) ToMessages(c platform.CompletionRequest, instructions, templates
 type ParameterDescriptions map[string]interface{}
 
 type ParameterDescription struct {
-	Description interface{}   `json:"description"`
-	Enums       []interface{} `json:"enum"`
-	Type        string        `json:"type"`
+	Description interface{}     `json:"description"`
+	Enums       []interface{}   `json:"enum"`
+	Type        *openapi3.Types `json:"type"`
 }
 
 func (p *ParameterDescription) MarshalJSON() ([]byte, error) {
 
-	if p.Type == "array" {
+	if p.Type.Is("array") {
 		switch td := p.Description.(type) {
 		case ParameterDescriptions:
 			bts, err := json.Marshal(td)
@@ -176,19 +176,18 @@ func (q *Zhipu) CreateChatStream(req *openai.ChatCompletionRequest, typ string, 
 
 func schemaToParameterDescriptions(schema *openapi3.Schema) interface{} {
 
-	if schema.Type == "object" {
+	if schema.Type.Is("object") {
 		var parameters = make(ParameterDescriptions)
 
 		for name, property := range schema.Properties {
-			switch property.Value.Type {
-			case "array":
+			if property.Value.Type.Is("array") {
 				parameters[name] = &ParameterDescription{
 					Description: schemaToParameterDescriptions(property.Value.Items.Value),
 					Type:        property.Value.Type,
 				}
-			case "object":
+			} else if property.Value.Type.Is("object") {
 				parameters[name] = schemaToParameterDescriptions(property.Value)
-			default:
+			} else {
 				var pDes = &ParameterDescription{
 					Description: property.Value.Description,
 					Type:        property.Value.Type,

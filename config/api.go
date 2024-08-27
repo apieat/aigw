@@ -49,7 +49,7 @@ func (a *ApiConfig) GetFunctions(allowed []model.AllowedFunction) []openai.Funct
 	}
 
 	var ret []openai.FunctionDefinition
-	for pName, v := range a.def.Paths {
+	for pName, v := range a.def.Paths.Map() {
 		for mName, v2 := range v.Operations() {
 			if allowdMap != nil {
 				if !allowdMap[pName][mName] {
@@ -166,7 +166,7 @@ func getParameterJson(p *openapi3.Operation) *openapi3.Schema {
 	var content = p.RequestBody.Value.Content
 	var typ string
 	var parameters openapi3.Schema
-	parameters.Type = "object"
+	parameters.Type = &openapi3.Types{"object"}
 	parameters.Properties = make(map[string]*openapi3.SchemaRef)
 	if p.Parameters != nil {
 		for _, v := range p.Parameters {
@@ -216,8 +216,7 @@ func fixSingle(property *openapi3.SchemaRef, name string, v interface{}) (interf
 	if property == nil || property.Value == nil {
 		return nil, false
 	}
-	switch property.Value.Type {
-	case "boolean":
+	if property.Value.Type.Is("boolean") {
 		if v == "true" || v == "是" {
 			return true, true
 		} else if v == "false" || v == "否" {
@@ -226,7 +225,7 @@ func fixSingle(property *openapi3.SchemaRef, name string, v interface{}) (interf
 			logrus.WithField("property", property).WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a boolean")
 			return nil, false
 		}
-	case "number":
+	} else if property.Value.Type.Is("number") {
 		if vStr, ok := v.(string); ok {
 			if vFloat, err := strconv.ParseFloat(vStr, 64); err == nil {
 				return vFloat, true
@@ -235,7 +234,7 @@ func fixSingle(property *openapi3.SchemaRef, name string, v interface{}) (interf
 					WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a number")
 			}
 		}
-	case "array":
+	} else if property.Value.Type.Is("array") {
 		rv := reflect.ValueOf(v)
 		if rv.Kind() == reflect.Slice {
 			var arr []interface{}
@@ -252,7 +251,7 @@ func fixSingle(property *openapi3.SchemaRef, name string, v interface{}) (interf
 			logrus.WithField("name", name).WithField("property", property).
 				WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a array")
 		}
-	case "object":
+	} else if property.Value.Type.Is("object") {
 		rv := reflect.ValueOf(v)
 		if rv.Kind() == reflect.Map {
 			var obj = make(map[string]interface{})
@@ -269,7 +268,7 @@ func fixSingle(property *openapi3.SchemaRef, name string, v interface{}) (interf
 			logrus.WithField("name", name).WithField("property", property).
 				WithField("wanted type", property.Value.Type).WithField("value", v).Warn("value is not a object")
 		}
-	default:
+	} else {
 		logrus.WithField("name", name).WithField("property", property).WithField("wanted type", property.Value.Type).WithField("value", v).Warn("unknown type")
 	}
 	return nil, false
