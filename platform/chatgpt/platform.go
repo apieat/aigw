@@ -2,6 +2,7 @@ package chatgpt
 
 import (
 	"context"
+	"errors"
 
 	"github.com/apieat/aigw/platform"
 	"github.com/sashabaranov/go-openai"
@@ -82,6 +83,10 @@ func (q *Chatgpt) CreateChatCompletion(req *openai.ChatCompletionRequest, typ st
 
 func (q *Chatgpt) AddResponseToMessage(req []openai.ChatCompletionMessage, resp platform.ChatCompletionResponse) []openai.ChatCompletionMessage {
 	return req
+}
+
+func (q *Chatgpt) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string)) error {
+	return errors.New("not implemented")
 }
 
 func init() {

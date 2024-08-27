@@ -3,6 +3,7 @@ package zhipu
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -167,6 +168,10 @@ func (q *Zhipu) AddResponseToMessage(req []openai.ChatCompletionMessage, resp pl
 		fmt.Printf("resp is not ChatCompletionResponse,resp is %T", resp)
 	}
 	return req
+}
+
+func (q *Zhipu) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string)) error {
+	return errors.New("not implemented")
 }
 
 func schemaToParameterDescriptions(schema *openapi3.Schema) interface{} {

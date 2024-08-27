@@ -3,6 +3,7 @@ package qianfan
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -35,6 +36,10 @@ func (q *Qianfan) Init(config *platform.AIConfig) (err error) {
 		if err != nil {
 			return err
 		}
+	}
+	if q.urls["embeddings"] == nil {
+		q.urls["embeddings"], err = url.Parse("https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/embedding-v1?access_token=" + q.token)
+		return err
 	}
 	return err
 }
@@ -192,6 +197,54 @@ func schemaToParameterDescriptions(schema *openapi3.Schema) interface{} {
 			Type:        schema.Type,
 		}
 	}
+}
+
+type EmbeddingRequest struct {
+	Input []string `json:"input"`
+}
+
+func (b *Qianfan) Embed(input ...string) ([][]float32, error) {
+
+	var reqData EmbeddingRequest
+	reqData.Input = input
+	payloadBytes, err := json.Marshal(reqData)
+	if err != nil {
+		return nil, err
+	}
+	payload := bytes.NewReader(payloadBytes)
+	client := &http.Client{}
+
+	url := b.urls["embeddings"].String()
+
+	req, err := http.NewRequest("POST", url, payload)
+
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	var response ChatCompletionResponse
+	json.NewDecoder(res.Body).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+	if response.ErrorCode != 0 {
+		return nil, fmt.Errorf("error code: %d, error msg: %s", response.ErrorCode, response.ErrorMsg)
+	}
+	var embeddings [][]float32
+	for _, data := range response.Data {
+		embeddings = append(embeddings, data.Embedding)
+	}
+	return embeddings, nil
+}
+
+func (q *Qianfan) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string)) error {
+	return errors.New("not implemented")
 }
 
 func init() {

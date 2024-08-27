@@ -45,6 +45,11 @@ var ErrorTooManyRetry = &Error{
 	Message: "too many retry because of invalid response",
 }
 
+var ErrorStreamingNotSupported = &Error{
+	Code:    1004,
+	Message: "streaming is not supported",
+}
+
 func NoFunctionCall(raw string) error {
 	return &Error{
 		Code:    1002,

@@ -24,9 +24,16 @@ func (r *ChatCompletionResponse) GetFunctionCallArguments(reqFc *openai.Function
 	} else {
 		jsonStr = message
 	}
+	if strings.Contains(jsonStr, "/*") {
+		var after string
+		jsonStr, after, _ = strings.Cut(jsonStr, "/*")
+		_, after, _ = strings.Cut(after, "*/")
+		jsonStr += after
+	}
 	jsonStr = findLineBreakAfterComments(jsonStr)
 	jsonStr = strings.ReplaceAll(jsonStr, "\n", "")
-	jsonStr = strings.ReplaceAll(jsonStr, "\r", "\\n")
+	jsonStr = strings.ReplaceAll(jsonStr, "\r", "\n")
+	logrus.Info("jsonStr fixed", jsonStr)
 	return &openai.FunctionCall{
 		Name:      reqFc.Name,
 		Arguments: jsonStr,
@@ -41,9 +48,9 @@ func findLineBreakAfterComments(jsonStr string) string {
 	for nextComment != -1 {
 		nextLineBreak := strings.Index(jsonStr[nextComment:], "\n")
 		if nextLineBreak != -1 {
-			jsonStr = jsonStr[:nextComment+nextLineBreak] + "\r" + jsonStr[nextComment+nextLineBreak+1:]
+			jsonStr = jsonStr[:nextComment] + "\r" + jsonStr[nextComment+nextLineBreak+1:]
 		}
-		offset := strings.Index(jsonStr[nextComment+2:], "//")
+		offset := strings.Index(jsonStr, "//")
 		if offset != -1 {
 			nextComment = nextComment + 2 + offset
 		} else {

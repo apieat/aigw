@@ -130,6 +130,86 @@ func (q *AiStudio) CreateChatCompletion(req *openai.ChatCompletionRequest, typ s
 	return nil, err
 }
 
+func (q *AiStudio) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string)) error {
+	req.Model = ""
+	req.Stream = true
+	var buf bytes.Buffer
+	var encoder = json.NewEncoder(&buf)
+	encoder.SetIndent("", "")
+	encoder.Encode(req)
+
+	qUrl, ok := q.urls[typ]
+
+	if !ok {
+		if qUrl, ok = q.urls["default"]; !ok {
+			var urlKeys []string
+			for k := range q.urls {
+				urlKeys = append(urlKeys, k)
+			}
+			return fmt.Errorf("url not found for type %s in %v", typ, urlKeys)
+		} else {
+			logrus.WithField("type", typ).WithField("url", qUrl.String()).Warnln("url not found for type, use default instead")
+		}
+	}
+
+	request, err := http.NewRequest(http.MethodPost, qUrl.String(), &buf)
+
+	if err == nil {
+		request.Header.Set("Authorization", "token "+q.token)
+		request.Header.Set("Content-Type", "application/json")
+		//set allow stream in response
+		request.Header.Set("Accept", "text/event-stream")
+
+		logrus.WithField("url", qUrl.String()).WithField("token", q.token).Debug("create chat completion request")
+	}
+
+	resp, err := http.DefaultClient.Do(request)
+	if err == nil {
+		// treat response as stream
+		var finished = make(chan struct{})
+		go func() {
+			var bts = make([]byte, 1)
+			var line strings.Builder
+			for {
+				_, err := resp.Body.Read(bts)
+				if err == io.EOF {
+					break
+				}
+				if bts[0] == '\n' {
+					var wrapper ChatCompletionResponseWrapper
+					var singleLine = line.String()
+					logrus.WithField("response", singleLine).Debug("read stream")
+					if strings.HasPrefix(singleLine, "data:") {
+						singleLine = strings.TrimPrefix(singleLine, "data:")
+						err = json.Unmarshal([]byte(singleLine), &wrapper)
+						if err == nil {
+							fn(wrapper.Result.Result)
+							if wrapper.Result.IsEnd {
+								break
+							}
+						} else {
+							logrus.WithField("response", singleLine).WithError(err).Error("read stream error")
+						}
+						line.Reset()
+					} else {
+						logrus.WithField("response", singleLine).Error("read stream format error")
+					}
+				} else {
+					line.Write(bts)
+				}
+				if err != nil {
+					logrus.WithError(err).Error("read stream error")
+					break
+				}
+			}
+
+			close(finished)
+		}()
+		<-finished
+	}
+	return err
+}
+
 func (q *AiStudio) AddFunctionsToMessage(functions []openai.FunctionDefinition, fc *openai.FunctionCall, req *openai.ChatCompletionRequest) *openai.ChatCompletionRequest {
 	var selectedFunction *openai.FunctionDefinition
 	if fc != nil {

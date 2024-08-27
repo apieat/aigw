@@ -2,30 +2,38 @@ package ctrl
 
 import (
 	"github.com/apieat/aigw/config"
-	"github.com/apieat/aigw/platform"
 	"github.com/extrame/goblet"
 	"github.com/sirupsen/logrus"
 )
 
-var openaiCfg platform.AIConfig
-var apiCfg config.ApiConfig
+// var openaiCfg platform.AIConfig
+// var apiCfg config.ApiConfig
 
-func AddConfig(server *goblet.Server) error {
-	err := server.AddConfig("ai", &openaiCfg)
+func AddConfig(server *goblet.Server) (*config.Config, error) {
+
+	var config config.Config
+
+	err := server.AddConfig("ai", &config.Platform)
 	if err == nil {
 
-		if openaiCfg.Platform == "" {
-			openaiCfg.Platform = "chatgpt"
+		if config.Platform.Platform == "" {
+			config.Platform.Platform = "chatgpt"
 		}
 
-		platform.Init(openaiCfg.Platform)
+		config.Platform.Init()
+		// platform.Init(openaiCfg.Platform)
 
-		err = server.AddConfig("api", &apiCfg)
+		err = server.AddConfig("api", &config.Api)
 		if err == nil {
-			logrus.WithField("templates", openaiCfg.Templates).Infoln("openai config loaded")
-			return apiCfg.Init()
+			logrus.WithField("templates", config.Platform.Templates).Infoln("openai config loaded")
+			err = config.Api.Init()
+			if err == nil {
+				// openaiCfg = config.Api
+				// apiCfg = config.Api
+				return &config, nil
+			}
 		}
 	}
 
-	return err
+	return nil, err
 }

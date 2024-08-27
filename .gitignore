@@ -3,3 +3,4 @@ deploy/
 vendor/
 config/private*
 deploy_bce/
+deploy_cp/

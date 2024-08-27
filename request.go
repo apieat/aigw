@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/apieat/aigw/platform"
+	"github.com/apieat/aigw/config"
+	"github.com/apieat/aigw/model"
+	"github.com/apieat/aigw/stream"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
 )
@@ -19,20 +21,54 @@ type CompletionRequest struct {
 	//action mode for the request, default is "json" supported: json, text, function_call
 	Mode string `json:"mode"`
 	//Type for template and instructions
-	Type        string            `json:"type"`
-	Functions   []AllowedFunction `json:"functions"`
-	Debug       bool              `json:"debug"`
-	Temparature float32           `json:"temparature"`
+	Type        string                  `json:"type"`
+	Functions   []model.AllowedFunction `json:"functions"`
+	Debug       bool                    `json:"debug"`
+	Temparature float32                 `json:"temparature"`
+	Stream      bool                    `json:"stream"`
 }
 
-type AllowedFunction struct {
-	Path   string `json:"path"`
-	Method string `json:"method"`
+func (arg *CompletionRequest) SendStream(cfg *config.Config, fn func(*stream.Stat)) (*stream.Stat, error) {
+	var functions = cfg.Api.GetFunctions(arg.Functions)
+	var fc *openai.FunctionCall
+	if len(functions) == 1 {
+		fc = &openai.FunctionCall{
+			Name: functions[0].Name,
+		}
+	}
+
+	logrus.WithField("prompt", arg.ToPrompt(arg.Prompt, cfg.Platform.Templates)).WithField("instruction", arg.ToPrompt(arg.Instruction, cfg.Platform.Instructions)).
+		WithField("functions_filter", arg.Functions).
+		WithField("functions", functions).
+		WithField("temparature", arg.GetTemparature()).
+		Debug("get completion request")
+
+	var req = &openai.ChatCompletionRequest{
+		Model:       cfg.Platform.GetModel(arg.Type),
+		MaxTokens:   cfg.Platform.MaxTokens,
+		Messages:    cfg.Platform.ToMessages(arg),
+		Temperature: arg.GetTemparature(),
+	}
+
+	req = cfg.Platform.AddFunctionsToMessage(functions, fc, req)
+
+	var builder stream.Builder
+
+	logrus.WithField("req", req).WithField("type", arg.Type).Debug("create chat completion")
+	err := cfg.Platform.CreateChatStream(req, arg.Type, func(s string) {
+		for _, c := range s {
+			builder.AppendRune(c)
+		}
+		stat := builder.Stat()
+		fn(stat)
+	})
+
+	return builder.Stat(), err
 }
 
-func (c *CompletionRequest) ToMessages(instructions, templates map[string]string) []openai.ChatCompletionMessage {
-	return platform.Current.ToMessages(c, instructions, templates)
-}
+// func (c *CompletionRequest) ToMessages(instructions, templates map[string]string) []openai.ChatCompletionMessage {
+// 	return cfg.Platform.ToMessages(c, instructions, templates)
+// }
 
 func (c *CompletionRequest) GetInstruction() string {
 	return c.Instruction

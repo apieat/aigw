@@ -15,13 +15,15 @@ import (
 func main() {
 	server := goblet.Organize("aigw", plugin.JSON)
 
-	err := ctrl.AddConfig(server)
+	config, err := ctrl.AddConfig(server)
 
 	if err != nil {
 		panic(errors.Wrap(err, "add config failed"))
 	}
 
-	server.ControlBy(&ctrl.Completion{})
+	server.ControlBy(&ctrl.Completion{
+		Config: config,
+	})
 
 	server.Run()
 }

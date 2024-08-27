@@ -3,6 +3,7 @@ package platform
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -23,6 +24,39 @@ type AIConfig struct {
 	Url            map[string]string `yaml:"url"`
 	Oauth2         *Oauth2Client     `yaml:"oauth2"`
 	Platform       string            `yaml:"platform"`
+	platform       Platform
+}
+
+func (c *AIConfig) Init() error {
+	c.platform = platforms[c.Platform]
+	if c.platform == nil {
+		return fmt.Errorf("platform %s not supported", c.Platform)
+	}
+	return c.platform.Init(c)
+}
+
+func (c *AIConfig) GetModel(typ string) string {
+	return c.platform.GetModel(typ)
+}
+
+func (c *AIConfig) AddFunctionsToMessage(functions []openai.FunctionDefinition, fc *openai.FunctionCall, req *openai.ChatCompletionRequest) *openai.ChatCompletionRequest {
+	return c.platform.AddFunctionsToMessage(functions, fc, req)
+}
+
+func (c *AIConfig) CreateChatCompletion(req *openai.ChatCompletionRequest, typ string) (ChatCompletionResponse, error) {
+	return c.platform.CreateChatCompletion(req, typ)
+}
+
+func (c *AIConfig) AddResponseToMessage(messages []openai.ChatCompletionMessage, resp ChatCompletionResponse) []openai.ChatCompletionMessage {
+	return c.platform.AddResponseToMessage(messages, resp)
+}
+
+func (c *AIConfig) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string)) error {
+	return c.platform.CreateChatStream(req, typ, fn)
+}
+
+func (c *AIConfig) ToMessages(cr CompletionRequest) []openai.ChatCompletionMessage {
+	return c.platform.ToMessages(cr, c.Instructions, c.Templates)
 }
 
 func (o *AIConfig) GetToken() string {

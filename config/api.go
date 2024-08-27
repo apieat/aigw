@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"gitee.com/bjf-fhe/apinx/openapi"
-	"github.com/apieat/aigw"
+	"github.com/apieat/aigw/model"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
@@ -39,7 +39,7 @@ func (a *ApiConfig) Init() (err error) {
 	return err
 }
 
-func (a *ApiConfig) GetFunctions(allowed []aigw.AllowedFunction) []openai.FunctionDefinition {
+func (a *ApiConfig) GetFunctions(allowed []model.AllowedFunction) []openai.FunctionDefinition {
 	var allowdMap map[string]map[string]bool
 	if (len(allowed)) > 0 {
 		allowdMap = make(map[string]map[string]bool)
@@ -134,9 +134,14 @@ func (a *ApiConfig) Call(id string, functions []openai.FunctionDefinition, f *op
 				Do(&callingArg)
 			if err == nil {
 				var bts []byte
-				bts, err = io.ReadAll(sess.GetResponse().Body)
-				if err == nil {
-					return pName, mName, json.RawMessage(bts), nil
+				var resp = sess.GetResponse()
+				if resp != nil {
+					bts, err = io.ReadAll(resp.Body)
+					if err == nil {
+						return pName, mName, json.RawMessage(bts), nil
+					}
+				} else {
+					err = fmt.Errorf("no response")
 				}
 			}
 		}
@@ -208,6 +213,9 @@ func fixFormate(bodyObj map[string]interface{}, schema *openapi3.Schema) map[str
 }
 
 func fixSingle(property *openapi3.SchemaRef, name string, v interface{}) (interface{}, bool) {
+	if property == nil || property.Value == nil {
+		return nil, false
+	}
 	switch property.Value.Type {
 	case "boolean":
 		if v == "true" || v == "是" {

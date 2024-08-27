@@ -9,12 +9,21 @@ import (
 )
 
 type ChatCompletionResponse struct {
-	ID      string       `json:"id"`
-	Object  string       `json:"object"`
-	Created int64        `json:"created"`
-	Model   string       `json:"model"`
-	Result  string       `json:"result"`
-	Usage   openai.Usage `json:"usage"`
+	ID        string       `json:"id"`
+	Object    string       `json:"object"`
+	Created   int64        `json:"created"`
+	Model     string       `json:"model"`
+	Result    string       `json:"result"`
+	Usage     openai.Usage `json:"usage"`
+	ErrorCode int          `json:"error_code"`
+	ErrorMsg  string       `json:"error_msg"`
+	Data      []Embedding  `json:"data"`
+}
+
+type Embedding struct {
+	Object    string    `json:"object"`
+	Embedding []float32 `json:"embedding"`
+	Index     int       `json:"index"`
 }
 
 func (r *ChatCompletionResponse) GetFunctionCallArguments(reqFc *openai.FunctionCall) (*openai.FunctionCall, error) {
