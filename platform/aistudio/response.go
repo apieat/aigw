@@ -18,7 +18,7 @@ type ChatCompletionResponseWrapper struct {
 type ChatCompletionResponse struct {
 	ID           string       `json:"id"`
 	Object       string       `json:"object"`
-	Created      int64        `json:"created,string"`
+	Created      int64        `json:"created"`
 	Model        string       `json:"model"`
 	Result       string       `json:"result"`
 	Usage        openai.Usage `json:"usage"`
@@ -61,6 +61,9 @@ func findLineBreakAfterComments(jsonStr string) string {
 		offset := strings.Index(jsonStr[nextComment+2:], "//")
 		if offset != -1 {
 			nextComment = nextComment + 2 + offset
+			if nextComment >= len(jsonStr) {
+				break
+			}
 		} else {
 			nextComment = -1
 		}

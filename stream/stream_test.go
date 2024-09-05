@@ -42,7 +42,7 @@ func TestStreamParseUnfinishedObject(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if string(bts) != `{"name":"test"}` {
+	if string(bts) != `{"name":"test","name1":""}` {
 		t.Error("unexpected result", string(bts))
 	}
 }
@@ -59,7 +59,7 @@ func TestStreamParseUnfinishedObjectWithNumber(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if string(bts) != `{"name":"test","name1":1}` {
+	if string(bts) != `{"name":"test","name1":1,"name2":""}` {
 		t.Error("unexpected result", string(bts))
 	}
 }
@@ -107,7 +107,7 @@ func TestStreamParseObjectWithBoolNumber(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if string(bts) != `{"name":"test","name1":1.2}` {
+	if string(bts) != `{"name":"test","name1":false}` {
 		t.Error("unexpected result", string(bts))
 	}
 }
@@ -251,7 +251,25 @@ func TestStreamParseObjectInObject2(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if string(bts) != `{"name":"test","name1":{"name":"test"}}` {
+	if string(bts) != `{"name1":{"name":"test"}}` {
+		t.Error("unexpected result", string(bts))
+	}
+}
+
+func TestStreamParseObjectInObject3(t *testing.T) {
+	var parser JsonStreamer
+	parser.Append("   {")
+	parser.Append("   \"body\": {\"name\": \"test\",")
+	parser.Append("  \"description\": \"test\",")
+	parser.Append("  \"subsystems\": [")
+	parser.Append("  {\"name\": \"test\"}")
+	parser.Append("  ]")
+	parser.Append("  } ")
+	bts, err := json.Marshal(&parser)
+	if err != nil {
+		t.Error(err)
+	}
+	if string(bts) != `{"body":{"description":"test","name":"test","subsystems":[{"name":"test"}]}}` {
 		t.Error("unexpected result", string(bts))
 	}
 }

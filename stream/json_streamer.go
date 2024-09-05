@@ -92,10 +92,10 @@ func (j *JsonObject) Append(c rune) (bool, bool, error) {
 		} else if finished {
 			logrus.WithField("key", j.curKey).WithField("value", j.curValue).Debug("append object value")
 			j.values[j.curKey] = j.curValue
+			j.step = _JSON_OBJECT_STEP_COMMA
 			if needReappend {
 				j.Append(c)
 			}
-			j.step = _JSON_OBJECT_STEP_COMMA
 			return false, needReappend, nil
 		}
 	} else if j.step == _JSON_OBJECT_STEP_COMMA {
@@ -241,19 +241,15 @@ type JsonArray struct {
 }
 
 func (j *JsonArray) MarshalJSON() ([]byte, error) {
-	bts, err := json.Marshal(j.values)
-	if err != nil {
-		return nil, err
+
+	if j.curItem == nil {
+		return json.Marshal(j.values)
+	} else {
+		var tempValues = make([]JsonToken, len(j.values)+1)
+		copy(tempValues, j.values)
+		tempValues[len(j.values)] = j.curItem
+		return json.Marshal(tempValues)
 	}
-	if j.curItem != nil {
-		bts = append(bts, ',')
-		btsMore, err := j.curItem.MarshalJSON()
-		if err != nil {
-			return nil, err
-		}
-		bts = append(bts, btsMore...)
-	}
-	return bts, nil
 }
 
 func (j *JsonArray) Append(c rune) (bool, bool, error) {
@@ -264,11 +260,11 @@ func (j *JsonArray) Append(c rune) (bool, bool, error) {
 		}
 		if finished {
 			j.values = append(j.values, j.curItem)
+			j.curItem = nil
 			if needReappend {
 				switch c {
 				case ',', ' ', '\t', '\n', '\r':
 					j.step = _JSON_OBJECT_STEP_NONE
-					j.curItem = nil
 				case ']':
 					return true, false, nil
 				}
