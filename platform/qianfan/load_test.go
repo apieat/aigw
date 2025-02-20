@@ -13,7 +13,7 @@ func TestLoadDef(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var path = def.Paths["/api/page/update"]
+	var path = def.Paths.Value("/api/page/update")
 	var post = path.Post
 	var req = post.RequestBody.Value
 	parameters := schemaToParameterDescriptions(req.Content.Get("application/json").Schema.Value)

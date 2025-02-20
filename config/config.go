@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/apieat/aigw/platform"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,7 +23,7 @@ func Init(fileName string) (cfg *Config, err error) {
 	var config Config
 	err = yaml.Unmarshal(file, &config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to parse yaml file")
 	}
 
 	err = config.Init()
@@ -38,8 +39,12 @@ func (c *Config) Init() error {
 	err := c.Platform.Init()
 
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to init platform")
 	}
 
-	return c.Api.Init()
+	err = c.Api.Init()
+	if err != nil {
+		return errors.Wrap(err, "failed to init api")
+	}
+	return nil
 }

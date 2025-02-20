@@ -9,6 +9,7 @@ import (
 )
 
 type Builder struct {
+	reasonBuilder   strings.Builder
 	desBuilder      strings.Builder
 	jsonBuilder     JsonStreamer
 	jsonParsingStep int
@@ -16,6 +17,10 @@ type Builder struct {
 	jsonSpliterCnt  int
 	jsonPrefixCnt   int
 	desReadLock     sync.Mutex
+}
+
+func (b *Builder) AppendReason(str string) {
+	b.reasonBuilder.WriteString(str)
 }
 
 func (b *Builder) AppendRune(c rune) {
@@ -53,6 +58,7 @@ func (b *Builder) AppendRune(c rune) {
 }
 
 type Stat struct {
+	Reason      string
 	Description string
 	Json        json.RawMessage
 	Finished    bool
@@ -60,6 +66,7 @@ type Stat struct {
 
 func (b *Builder) Stat() *Stat {
 	return &Stat{
+		Reason:      b.reasonBuilder.String(),
 		Description: b.DescriptionTail(),
 		Json:        b.jsonBuilder.Json(),
 		Finished:    b.jsonParsingStep == 3,

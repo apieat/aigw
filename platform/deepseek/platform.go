@@ -1,9 +1,8 @@
-package zhipu
+package deepseek
 
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,25 +17,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Zhipu struct {
+type DeepSeek struct {
 	// client *openai.Client
 	url   *url.URL
 	token string
 }
 
 // GetModel implements platform.Platform.
-func (*Zhipu) GetModel(typ string) string {
-	return "glm-4"
+func (*DeepSeek) GetModel(typ string) string {
+	return "deepseek-reasoner"
 }
 
-func (q *Zhipu) Init(config *platform.AIConfig) (err error) {
+func (q *DeepSeek) Init(config *platform.AIConfig) (err error) {
 	// q.client = config.GetClient()
 	q.token = config.GetToken()
-	q.url, _ = url.Parse("https://open.bigmodel.cn/api/paas/v4/chat/completions")
+	q.url, _ = url.Parse("https://api.deepseek.com/chat/completions")
 	return nil
 }
 
-func (q *Zhipu) ToMessages(c platform.CompletionRequest, instructions, templates map[string]string) []openai.ChatCompletionMessage {
+func (q *DeepSeek) ToMessages(c platform.CompletionRequest, instructions, templates map[string]string) []openai.ChatCompletionMessage {
 	var messages []openai.ChatCompletionMessage
 	// var content string
 	var instruction = c.GetInstruction()
@@ -85,7 +84,7 @@ func (p *ParameterDescription) MarshalJSON() ([]byte, error) {
 
 }
 
-func (q *Zhipu) CreateChatCompletion(req *openai.ChatCompletionRequest, typ string) (platform.ChatCompletionResponse, error) {
+func (q *DeepSeek) CreateChatCompletion(req *openai.ChatCompletionRequest, typ string) (platform.ChatCompletionResponse, error) {
 	req.Stream = false
 	if req.Temperature <= 0 || req.Temperature >= 1 {
 		req.Temperature = 0.95
@@ -108,7 +107,7 @@ func (q *Zhipu) CreateChatCompletion(req *openai.ChatCompletionRequest, typ stri
 	request, err := http.NewRequest(http.MethodPost, q.url.String(), &buf)
 
 	if err == nil {
-		request.Header.Set("Authorization", jwtEncode(q.token))
+		request.Header.Set("Authorization", "Bearer "+q.token)
 		request.Header.Set("Content-Type", "application/json")
 
 		logrus.WithField("url", q.url.String()).WithField("token", q.token).Debug("create chat completion request")
@@ -131,7 +130,7 @@ func (q *Zhipu) CreateChatCompletion(req *openai.ChatCompletionRequest, typ stri
 	return nil, err
 }
 
-func (q *Zhipu) AddFunctionsToMessage(functions []openai.FunctionDefinition, fc *openai.FunctionCall, req *openai.ChatCompletionRequest) *openai.ChatCompletionRequest {
+func (q *DeepSeek) AddFunctionsToMessage(functions []openai.FunctionDefinition, fc *openai.FunctionCall, req *openai.ChatCompletionRequest) *openai.ChatCompletionRequest {
 	var selectedFunction *openai.FunctionDefinition
 	if fc != nil {
 		for _, function := range functions {
@@ -161,7 +160,7 @@ func (q *Zhipu) AddFunctionsToMessage(functions []openai.FunctionDefinition, fc 
 	return req
 }
 
-func (q *Zhipu) AddResponseToMessage(req []openai.ChatCompletionMessage, resp platform.ChatCompletionResponse) []openai.ChatCompletionMessage {
+func (q *DeepSeek) AddResponseToMessage(req []openai.ChatCompletionMessage, resp platform.ChatCompletionResponse) []openai.ChatCompletionMessage {
 	if tr, ok := resp.(*ChatCompletionResponse); ok {
 		req = append(req, tr.Choices[0].Message)
 	} else {
@@ -170,8 +169,82 @@ func (q *Zhipu) AddResponseToMessage(req []openai.ChatCompletionMessage, resp pl
 	return req
 }
 
-func (q *Zhipu) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string, string)) error {
-	return errors.New("not implemented")
+func (q *DeepSeek) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string, string)) error {
+	req.Stream = true
+	var buf bytes.Buffer
+	var encoder = json.NewEncoder(&buf)
+	encoder.SetIndent("", "")
+	encoder.Encode(req)
+
+	request, err := http.NewRequest(http.MethodPost, q.url.String(), &buf)
+
+	if err == nil {
+		request.Header.Set("Authorization", "Bearer "+q.token)
+		request.Header.Set("Content-Type", "application/json")
+		//set allow stream in response
+		request.Header.Set("Accept", "text/event-stream")
+
+		logrus.WithField("url", q.url.String()).WithField("token", q.token).Debug("create chat completion request")
+	} else {
+		logrus.WithError(err).Error("create chat completion request error")
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(request)
+	if err == nil {
+		// treat response as stream
+		var finished = make(chan struct{})
+		go func() {
+			var bts = make([]byte, 1)
+			var line strings.Builder
+			for {
+				_, err := resp.Body.Read(bts)
+				// fmt.Print(string(bts))
+				if bts[0] == '\n' || err == io.EOF {
+					var wrapper platform.ChatCompletionStreamResponse
+					var singleLine = line.String()
+					logrus.WithField("response", singleLine).Info("read stream")
+					if strings.HasPrefix(singleLine, "data:") {
+						singleLine = strings.TrimPrefix(singleLine, "data:")
+						logrus.Info("read stream data", singleLine)
+						err = json.Unmarshal([]byte(singleLine), &wrapper)
+						if err == nil {
+							for _, c := range wrapper.Choices {
+								if c.Delta != nil {
+									fn(c.Delta.Content, c.Delta.ReasonContent)
+								}
+								if c.FinishReason != nil {
+									break
+								}
+							}
+
+						} else {
+							logrus.WithField("response", singleLine).WithError(err).Error("read stream error")
+						}
+						line.Reset()
+					} else {
+						logrus.WithField("response", singleLine).Error("read stream format error")
+						line.Reset()
+					}
+					if err == io.EOF {
+						break
+					}
+				} else {
+					line.Write(bts)
+				}
+				if err != nil {
+					logrus.WithError(err).Error("read stream error")
+					break
+				}
+			}
+
+			close(finished)
+		}()
+		<-finished
+	} else {
+		logrus.WithError(err).Debug("create chat completion request error")
+	}
+	return err
 }
 
 func schemaToParameterDescriptions(schema *openapi3.Schema) interface{} {
@@ -232,5 +305,5 @@ func jwtEncode(token string) string {
 }
 
 func init() {
-	platform.RegisterPlatform("zhipu", &Zhipu{})
+	platform.RegisterPlatform("deepseek", &DeepSeek{})
 }

@@ -25,6 +25,11 @@ type ApiConfig struct {
 }
 
 func (a *ApiConfig) Init() (err error) {
+
+	if a.Def == "" {
+		return fmt.Errorf("def file is not given, please check your config")
+	}
+
 	a.def, err = openapi3.NewLoader().LoadFromFile(a.Def)
 	if err == nil {
 		if no, err := strconv.Atoi(a.BaseUrl); err == nil {

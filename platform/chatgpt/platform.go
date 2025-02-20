@@ -85,7 +85,7 @@ func (q *Chatgpt) AddResponseToMessage(req []openai.ChatCompletionMessage, resp 
 	return req
 }
 
-func (q *Chatgpt) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string)) error {
+func (q *Chatgpt) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string, string)) error {
 	return errors.New("not implemented")
 }
 

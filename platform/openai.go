@@ -24,6 +24,7 @@ type AIConfig struct {
 	Url            map[string]string `yaml:"url"`
 	Oauth2         *Oauth2Client     `yaml:"oauth2"`
 	Platform       string            `yaml:"platform"`
+	Model          string            `yaml:"model"`
 	platform       Platform
 }
 
@@ -51,7 +52,7 @@ func (c *AIConfig) AddResponseToMessage(messages []openai.ChatCompletionMessage,
 	return c.platform.AddResponseToMessage(messages, resp)
 }
 
-func (c *AIConfig) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string)) error {
+func (c *AIConfig) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string, string)) error {
 	return c.platform.CreateChatStream(req, typ, fn)
 }
 

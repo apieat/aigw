@@ -4,3 +4,5 @@ vendor/
 config/private*
 deploy_bce/
 deploy_cp/
+config.yaml
+def.yaml

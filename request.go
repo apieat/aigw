@@ -55,10 +55,11 @@ func (arg *CompletionRequest) SendStream(cfg *config.Config, fn func(*stream.Sta
 	var builder stream.Builder
 
 	logrus.WithField("req", req).WithField("type", arg.Type).Debug("create chat completion")
-	err := cfg.Platform.CreateChatStream(req, arg.Type, func(s string) {
-		for _, c := range s {
+	err := cfg.Platform.CreateChatStream(req, arg.Type, func(content, reason string) {
+		for _, c := range content {
 			builder.AppendRune(c)
 		}
+		builder.AppendReason(reason)
 		stat := builder.Stat()
 		fn(stat)
 	})

@@ -156,10 +156,11 @@ func (c *Completion) handleStream(req *openai.ChatCompletionRequest, typ string,
 	var builder stream.Builder
 
 	logrus.WithField("req", req).WithField("type", typ).Debug("create chat completion")
-	err = c.Config.Platform.CreateChatStream(req, typ, func(s string) {
-		for _, c := range s {
+	err = c.Config.Platform.CreateChatStream(req, typ, func(content, reaseon string) {
+		for _, c := range content {
 			builder.AppendRune(c)
 		}
+		builder.AppendReason(reaseon)
 		stat := builder.Stat()
 		bts, err := json.Marshal(stat)
 		if err == nil {

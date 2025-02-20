@@ -19,6 +19,7 @@ type AiStudio struct {
 	// client *openai.Client
 	urls  map[string]*url.URL
 	token string
+	model string
 }
 
 func (q *AiStudio) Init(config *platform.AIConfig) (err error) {
@@ -26,16 +27,21 @@ func (q *AiStudio) Init(config *platform.AIConfig) (err error) {
 	q.token = config.GetToken()
 	q.urls = make(map[string]*url.URL)
 	for k, u := range config.Url {
-		q.urls[k], err = url.Parse("https://aistudio.baidu.com/llm/lmapi/v1" + u)
+		q.urls[k], err = url.Parse("https://aistudio.baidu.com/llm/lmapi/v3" + u)
 		if err != nil {
 			return err
 		}
+	}
+	if config.Model != "" {
+		q.model = config.Model
+	} else {
+		q.model = "ernie-4.0-8k"
 	}
 	return err
 }
 
 func (q *AiStudio) GetModel(typ string) string {
-	return ""
+	return q.model
 }
 
 func (q *AiStudio) ToMessages(c platform.CompletionRequest, instructions, templates map[string]string) []openai.ChatCompletionMessage {
@@ -130,8 +136,8 @@ func (q *AiStudio) CreateChatCompletion(req *openai.ChatCompletionRequest, typ s
 	return nil, err
 }
 
-func (q *AiStudio) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string)) error {
-	req.Model = ""
+func (q *AiStudio) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string, string)) error {
+	// req.Model = ""
 	req.Stream = true
 	var buf bytes.Buffer
 	var encoder = json.NewEncoder(&buf)
@@ -172,20 +178,21 @@ func (q *AiStudio) CreateChatStream(req *openai.ChatCompletionRequest, typ strin
 			var line strings.Builder
 			for {
 				_, err := resp.Body.Read(bts)
-				if err == io.EOF {
-					break
-				}
-				if bts[0] == '\n' {
-					var wrapper ChatCompletionResponseWrapper
+				if bts[0] == '\n' || err == io.EOF {
+					var wrapper platform.ChatCompletionStreamResponse
 					var singleLine = line.String()
 					logrus.WithField("response", singleLine).Debug("read stream")
 					if strings.HasPrefix(singleLine, "data:") {
 						singleLine = strings.TrimPrefix(singleLine, "data:")
+						if singleLine == "[DONE]" {
+							break
+						}
 						err = json.Unmarshal([]byte(singleLine), &wrapper)
 						if err == nil {
-							fn(wrapper.Result.Result)
-							if wrapper.Result.IsEnd {
-								break
+							for _, choice := range wrapper.Choices {
+								if choice.Delta != nil {
+									fn(choice.Delta.Content, choice.Delta.ReasonContent)
+								}
 							}
 						} else {
 							logrus.WithField("response", singleLine).WithError(err).Error("read stream error")
@@ -193,6 +200,9 @@ func (q *AiStudio) CreateChatStream(req *openai.ChatCompletionRequest, typ strin
 						line.Reset()
 					} else {
 						logrus.WithField("response", singleLine).Error("read stream format error")
+					}
+					if err == io.EOF {
+						break
 					}
 				} else {
 					line.Write(bts)

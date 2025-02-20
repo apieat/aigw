@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	_ "github.com/apieat/aigw/platform/aistudio"
+	_ "github.com/apieat/aigw/platform/deepseek"
 )
 
 func TestMain(t *testing.T) {

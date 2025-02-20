@@ -24,7 +24,7 @@ type Qianfan struct {
 
 // GetModel implements platform.Platform.
 func (*Qianfan) GetModel(typ string) string {
-	return ""
+	return "deepseek-r1"
 }
 
 func (q *Qianfan) Init(config *platform.AIConfig) (err error) {
@@ -242,7 +242,7 @@ func (b *Qianfan) Embed(input ...string) ([][]float32, error) {
 	return embeddings, nil
 }
 
-func (q *Qianfan) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string)) error {
+func (q *Qianfan) CreateChatStream(req *openai.ChatCompletionRequest, typ string, fn func(string, string)) error {
 	return errors.New("not implemented")
 }
 
